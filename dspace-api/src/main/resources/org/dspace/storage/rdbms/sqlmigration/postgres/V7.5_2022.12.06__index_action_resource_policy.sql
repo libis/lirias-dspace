@@ -6,4 +6,4 @@
 -- http://www.dspace.org/license/
 --
 
-CREATE INDEX resourcepolicy_action_idx ON resourcepolicy(action_id);
+CREATE INDEX IF NOT EXISTS resourcepolicy_action_idx ON resourcepolicy(action_id);
