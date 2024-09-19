@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,10 +57,12 @@ import org.dspace.content.Community;
 import org.dspace.content.Item;
 import org.dspace.content.MetadataField;
 import org.dspace.content.MetadataValue;
+import org.dspace.content.dto.MetadataValueDTO;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.eperson.Group;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.util.SolrUtils;
@@ -81,6 +84,10 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
  */
 @SuppressWarnings("deprecation")
 public class XOAI {
+    private static final String PUBLIC_BITSTREAM_AVAILABILITY = "public";
+    private static final String EMBARGO_BITSTREAM_AVAILABILITY = "embargo";
+    private static final String PRIVATE_BITSTREAM_AVAILABILITY = "private";
+    private static final String INTRANET_BITSTREAM_AVAILABILITY = "intranet";
     private static Logger log = LogManager.getLogger(XOAI.class);
 
     // needed because the solr query only returns 10 rows by default
@@ -468,6 +475,8 @@ public class XOAI {
             doc.addField("metadata.dc.format.mimetype", f);
         }
 
+        setBitstreamAccess(item);
+
         // Message output before processing - for debugging purposes
         if (verbose) {
             println(String.format("Item %s with handle %s is about to be indexed", item.getID().toString(), handle));
@@ -492,6 +501,70 @@ public class XOAI {
         }
 
         return doc;
+    }
+
+    private void setBitstreamAccess(Item item) {
+        try {
+            List<ResourcePolicy> bitstreamPolicies = getAllBitstreamPolicies(item);
+            if (!bitstreamPolicies.isEmpty()) {
+
+                boolean publicAccess = false;
+                boolean embargo = false;
+                Date embargoDate = null;
+                boolean registeredUsers = false;
+                Date now = new Date();
+
+                for (ResourcePolicy policy : bitstreamPolicies) {
+                    Group group = policy.getGroup();
+                    if (group != null && group.getName() == Group.ANONYMOUS) {
+                        if (policy.getStartDate() != null) {
+                            if(policy.getStartDate().before(now)){
+                                // If a single bitstream has anonymous read rights with 'start date' in the past, consider this 'publicly available'
+                                publicAccess = true;
+                                break;
+                            }
+                            embargo = true;
+                            Date startDate = policy.getStartDate();
+                            if (embargoDate == null || startDate.before(embargoDate)) {
+                                embargoDate = startDate;
+                            }
+                        } else {
+                            publicAccess = true;
+                        }
+                    }
+                    if (group != null && group.getName().equals("registered_users")) {
+                        registeredUsers = true;
+                    }
+                }
+
+                if (publicAccess) {
+                    itemService.addMetadata(context,item,"dc", "bitstream", "availability", null, PUBLIC_BITSTREAM_AVAILABILITY);
+                } else if (embargo) {
+                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+                    itemService.addMetadata(context,item,"dc", "bitstream", "availability", null, EMBARGO_BITSTREAM_AVAILABILITY);
+                    itemService.addMetadata(context,item,"dc", "bitstream", "availabilityDate", null, format.format(embargoDate));
+                } else if (registeredUsers) {
+                    itemService.addMetadata(context,item,"dc", "bitstream", "availability", null, INTRANET_BITSTREAM_AVAILABILITY);
+                } else {
+                    itemService.addMetadata(context,item,"dc", "bitstream", "availability", null, PRIVATE_BITSTREAM_AVAILABILITY);
+                }
+            }
+        } catch (SQLException e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+    private List<ResourcePolicy> getAllBitstreamPolicies(final Item item) throws SQLException {
+        List<ResourcePolicy> policies = new ArrayList<>();
+
+        List<Bundle> bundles = item.getBundles("ORIGINAL");
+        for (Bundle bundle : bundles) {
+            List<Bitstream> bitstreams = bundle.getBitstreams();
+            for (Bitstream bitstream : bitstreams) {
+                policies.addAll(authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ));
+            }
+        }
+        return policies;
     }
 
     private boolean willChangeStatus(Item item) throws SQLException {
