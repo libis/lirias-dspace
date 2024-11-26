@@ -19,6 +19,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -385,6 +387,12 @@ public class ShibAuthentication implements AuthenticationMethod {
                 } // foreach affiliations
             } // if affiliations
 
+            // add registered_users group for students
+            Optional.ofNullable(findMultipleAttributes(request, "unscoped-affiliation")).orElse(Collections.emptyList()).stream()
+                .map((unscopedAffiliation) -> registeredUsersIfStudent(context, unscopedAffiliation))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .ifPresent(groups::add);
 
             log.info("Added current EPerson to special groups: " + groups);
 
@@ -394,6 +402,14 @@ public class ShibAuthentication implements AuthenticationMethod {
             log.error("Unable to validate any sepcial groups this user may belong too because of an exception.", t);
             return Collections.EMPTY_LIST;
         }
+    }
+
+    private Group registeredUsersIfStudent(final Context context, final String unscopedAffiliation) {
+        try {
+            return "student".equals(unscopedAffiliation) ? groupService.findByName(context,"registered_users") : null;
+        } catch (SQLException e) {
+        }
+        return null;
     }
 
 
