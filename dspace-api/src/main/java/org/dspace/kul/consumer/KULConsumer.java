@@ -99,7 +99,12 @@ public class KULConsumer implements Consumer {
         } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
             System.out.println("modify bitstream case");
             ((Bitstream) event.getSubject(ctx)).getBundles().forEach(bundle -> bundle.getItems()
-                    .forEach(item -> queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()))));
+                    .forEach(item -> {
+                        if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
+                            queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()));
+                        }
+                    }
+                    ));
         } else {
             System.out.println("Unprocessed event: " + event.toString());
         }
