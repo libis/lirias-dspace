@@ -57,7 +57,7 @@ public class KULConsumer implements Consumer {
 
     @Override
     public void initialize() throws Exception {
-        System.out.print("\nKUL Consumer init.\n");
+        System.out.print("\nKUL Consumer init. \n");
 
     }
 
@@ -69,12 +69,21 @@ public class KULConsumer implements Consumer {
     @Override
     public void consume(Context ctx, Event event) throws Exception {
         // Add, Install or delete Bitstream to/from Bundle
-        if (List.of(Event.DELETE, Event.INSTALL, Event.ADD).contains(event.getEventType())
+        System.out.print("Identifiers: " + event.getIdentifiers().toString());
+        // System.out.print("\n Event:" + event.toString() + "\n");
+        if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
+            System.out.print("Item install: " + event.getSubjectID());
+            queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+        } else if (List.of(Event.DELETE, Event.ADD).contains(event.getEventType())
                 && event.getSubjectType() == Constants.BUNDLE) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
+            System.out.print("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
+                if (!queue.stream().anyMatch(x -> x.getItemId().equals(item.getID()))) {
+                    System.out.print("Item: " + item + " (from bundle)");
                 // event.getObjectID() is the bitstream ID
-                queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+                    queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+                }
             }
         }
     }
@@ -88,30 +97,39 @@ public class KULConsumer implements Consumer {
 
         for (final QueuedItem qi : queue) {
             final Item item = itemService.find(ctx, qi.getItemId());
-
             Bitstream bitstream = null;
-            if (qi.getBitstreamId() != null && qi.getBitstreamId().equals(UUID.fromString("-1"))) {
+            if (qi.getBitstreamId() != null) {
                 bitstream = bitstreamService.find(ctx, qi.getBitstreamId());
-            }
 
+            }
             List<Bitstream> bitstreams = new ArrayList<>();
             if (qi.getItemId() != null) {
                 for (Bundle bundle : itemService.getBundles(item, "ORIGINAL")) {
                     bitstreams.addAll(bundle.getBitstreams());
+
                 }
             }
+            System.out.print("\nItem: " + item);
+            System.out.print("\nBitstream: " + bitstream);
+            System.out.print("\nBitstreams: " + bitstreams);
+            System.out.print("\nGroupsmap: " + groupsMap);
 
             switch (qi.getEventType()) {
+
                 case Event.ADD:
+                    System.out.print("\nReposit case\n");
                     redepositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.INSTALL:
+                    System.out.print("\nDeposit case\n");
                     depositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.DELETE:
+                    System.out.print("\nRemove case\n");
                     removeCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.MODIFY:
+                    System.out.print("\nEdit case\n");
                     editCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 default:
@@ -155,21 +173,54 @@ public class KULConsumer implements Consumer {
             final List<Bitstream> bitstreams, final Map<String, Group> groupsMap) throws Exception {
 
         final List<ResourcePolicy> policies = List.of();
-        policies.add(readForGroup(ctx, groupsMap.get(ADMINS_LOCAL_GROUP)));
+        // policies.add(readForGroup(ctx, groupsMap.get(ADMINS_LOCAL_GROUP)));
+        String message = MessageFormat.format("No. of bitstreams: {0} ", bitstreams.size());
+        for (Bitstream b : bitstreams) {
+            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}  bytes, checksum: {3} ({4})",
+                    b.getName(),
+                    b.getID().toString(),
+                    b.getSizeBytes(),
+                    b.getChecksum(),
+                    b.getChecksumAlgorithm());
+            String permissionMessage = getBitstreamPermissionText(ctx, b);
+            if (!permissionMessage.isBlank()) {
+                message += MessageFormat.format(", File permission: {0}", permissionMessage);
+            }
+            message += " ";
+        }
 
-        // TODO: message
-        doUpdate(ctx, bitstream, item, bitstreams, groupsMap, null, policies);
+        message = MessageFormat.format("Redeposited by {0} ({1}) on {2} - {3}",
+                ctx.getCurrentUser().getFullName(),
+                ctx.getCurrentUser().getEmail(),
+                DCDate.getCurrent().toString(),
+                message);
+
+        doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
     }
 
     private void removeCase(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
-            final Map<String, Group> groupsMap) {
-
+            final Map<String, Group> groupsMap) throws Exception {
+        String message = MessageFormat.format("Bitstream removed by {0} ({1}) on {2} - {3}",
+                ctx.getCurrentUser().getFullName(),
+                ctx.getCurrentUser().getEmail(), DCDate.getCurrent().toString());
+        final List<ResourcePolicy> policies = List.of();
+        doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
     }
 
     private void editCase(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
-            final Map<String, Group> groupsMap) {
+            final Map<String, Group> groupsMap) throws Exception {
+        String message = MessageFormat.format(
+                "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} from {4} to ",
+                bitstream.getName(),
+                bitstream.getID(),
+                ctx.getCurrentUser().getFullName(),
+                ctx.getCurrentUser().getEmail(),
+                DCDate.getCurrent().toString(),
+                getBitstreamPermissionText(ctx, bitstream));
+        final List<ResourcePolicy> policies = List.of();
+        doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
 
     }
 
@@ -181,17 +232,37 @@ public class KULConsumer implements Consumer {
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap, final String message, final List<ResourcePolicy> policies)
             throws Exception {
+
+        System.out.print("Do update context: " + ctx);
+        System.out.print("Do update policies: " + policies);
+        System.out.print("Do update bitstream: " + bitstream);
+        System.out.print("Do update bitstreams: " + bitstreams);
+        System.out.print("Do update groupsMap: " + groupsMap.values());
+
         if (policies != null && !policies.isEmpty()) {
+
+            System.out.print("Change policies\n");
+
             if (bitstream != null) {
-                changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
+                // changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
             } else {
                 for (final Bitstream b : bitstreams) {
-                    changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
+                    // changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
                 }
             }
         }
         if (message != null) {
-            writeMessage(ctx, item, message);
+            if (message.contains("were updated on")) {
+                // if permission is updated, add the new permission to the message
+                // ("The permissions of bitstream ... updated from ... to ...")
+                writeMessage(ctx, item, message + getBitstreamPermissionText(ctx, bitstream));
+                System.out.print("Message: " + message + getBitstreamPermissionText(ctx, bitstream));
+            } else {
+                writeMessage(ctx, item, message);
+                System.out.print("Message: " + message);
+
+            }
+
         }
     }
 

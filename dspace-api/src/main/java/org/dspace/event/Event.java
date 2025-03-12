@@ -57,19 +57,21 @@ public class Event implements Serializable {
     /**
      * Event (Action) types
      */
-    public static final int CREATE = 1 << 0; // create new object
+    public static final int CREATE = 1 << 0; // create new object 1
 
-    public static final int MODIFY = 1 << 1; // modify object
+    public static final int MODIFY = 1 << 1; // modify object 2
 
-    public static final int MODIFY_METADATA = 1 << 2; // modify object
+    public static final int MODIFY_METADATA = 1 << 2; // modify object 4
 
-    public static final int ADD = 1 << 3; // add content to container
+    public static final int ADD = 1 << 3; // add content to container 8
 
-    public static final int REMOVE = 1 << 4; // remove content from container
+    public static final int REMOVE = 1 << 4; // remove content from container 16 
 
-    public static final int DELETE = 1 << 5; // destroy object
+    public static final int DELETE = 1 << 5; // destroy object 32
 
-    public static final int INSTALL = 1 << 6; // object exits workspace/flow
+    public static final int INSTALL = 1 << 6; // object exits workspace/flow 64
+
+    public static final int DELETE_BITSTREAM = 1 << 7; // object exits workspace/flow 64
 
     /**
      * Index of filter parts in their array:
@@ -80,7 +82,7 @@ public class Event implements Serializable {
 
     // XXX NOTE: keep this up to date with any changes to event (action) types.
     protected static final String eventTypeText[] = {"CREATE", "MODIFY",
-        "MODIFY_METADATA", "ADD", "REMOVE", "DELETE", "INSTALL"};
+        "MODIFY_METADATA", "ADD", "REMOVE", "DELETE", "INSTALL", "DELETE_BITSTREAM"};
 
     /** XXX NOTE: These constants must be kept synchronized * */
     /**
