@@ -57,50 +57,47 @@ public class KULConsumer implements Consumer {
 
     @Override
     public void initialize() throws Exception {
-        System.out.print("\nKUL Consumer init. \n");
+        System.out.println("\nKUL Consumer init. \n");
 
     }
 
     @Override
     public void finish(Context ctx) throws Exception {
-        System.out.print("\nKUL Consumer finished.\n");
+        System.out.println("\nKUL Consumer finished.\n");
     }
 
     @Override
     public void consume(Context ctx, Event event) throws Exception {
-        // Add, Install or delete Bitstream to/from Bundle
-        System.out.print("Identifiers: " + event.getIdentifiers().toString());
-        // System.out.print("\n Event:" + event.toString() + "\n");
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
-            System.out.print("Item install: " + event.getSubjectID());
+            System.out.println("Item install: " + event.getSubjectID());
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
 
             // delete everything before last submit
         } else if (Event.ADD == event.getEventType()
                 && event.getSubjectType() == Constants.BUNDLE) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
-            System.out.print("Bundle: " + bundle);
+            System.out.println("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
                 // we listen to the ADD event only when the item is already installed
                 if (item.getMetadata().stream().anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance")
                         && x.getValue().startsWith("Submitted by "))) {
-                    System.out.print("Item added: " + item);
+                    System.out.println("Item added: " + item);
                     // event.getObjectID() is the bitstream ID
                     queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                 }
             }
         } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
-            System.out.print("Bundle: " + bundle);
+            System.out.println("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
                 if (!queue.stream().anyMatch(x -> x.getItemId().equals(item.getID()))) {
-                    System.out.print("Item: " + item + " (from bundle)");
+                    System.out.println("Item: " + item + " (from bundle)");
                     // event.getObjectID() is the bitstream ID
                     queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                 }
             }
         } else {
-            System.out.print("Unprocessed event: " + event.toString());
+            System.out.println("Unprocessed event: " + event.toString());
         }
     }
 
@@ -125,15 +122,15 @@ public class KULConsumer implements Consumer {
 
                 }
             }
-            System.out.print("\nItem: " + item);
-            System.out.print("\nBitstream: " + bitstream);
-            System.out.print("\nBitstreams: " + bitstreams);
-            System.out.print("\nGroupsmap: " + groupsMap);
+            System.out.println("\nItem: " + item);
+            System.out.println("\nBitstream: " + bitstream);
+            System.out.println("\nBitstreams: " + bitstreams);
+            System.out.println("\nGroupsmap: " + groupsMap);
 
             switch (qi.getEventType()) {
 
                 case Event.ADD:
-                    System.out.print("\nRedeposit or add via DSpace UI case\n");
+                    System.out.println("\nRedeposit or add via DSpace UI case\n");
                     if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
                         redepositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     } else {
@@ -141,15 +138,15 @@ public class KULConsumer implements Consumer {
                     }
                     break;
                 case Event.INSTALL:
-                    System.out.print("\nDeposit case\n");
+                    System.out.println("\nDeposit case\n");
                     depositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.DELETE_BITSTREAM:
-                    System.out.print("\nRemove case\n");
+                    System.out.println("\nRemove case\n");
                     removeCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.MODIFY:
-                    System.out.print("\nEdit case\n");
+                    System.out.println("\nEdit case\n");
                     editCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 default:
@@ -298,15 +295,15 @@ public class KULConsumer implements Consumer {
             final Map<String, Group> groupsMap, final String message, final List<ResourcePolicy> policies)
             throws Exception {
 
-        System.out.print("Do update context: " + ctx);
-        System.out.print("Do update policies: " + policies);
-        System.out.print("Do update bitstream: " + bitstream);
-        System.out.print("Do update bitstreams: " + bitstreams);
-        System.out.print("Do update groupsMap: " + groupsMap.values());
+        System.out.println("Do update context: " + ctx);
+        System.out.println("Do update policies: " + policies);
+        System.out.println("Do update bitstream: " + bitstream);
+        System.out.println("Do update bitstreams: " + bitstreams);
+        System.out.println("Do update groupsMap: " + groupsMap.values());
 
         if (policies != null && !policies.isEmpty()) {
 
-            System.out.print("Change policies\n");
+            System.out.println("Change policies\n");
 
             if (bitstream != null) {
                 changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
@@ -321,10 +318,10 @@ public class KULConsumer implements Consumer {
                 // if permission is updated, add the new permission to the message
                 // ("The permissions of bitstream ... updated from ... to ...")
                 writeMessage(ctx, item, message + getBitstreamPermissionText(ctx, bitstream));
-                System.out.print("Message: " + message + getBitstreamPermissionText(ctx, bitstream));
+                System.out.println("Message: " + message + getBitstreamPermissionText(ctx, bitstream));
             } else {
                 writeMessage(ctx, item, message);
-                System.out.print("Message: " + message);
+                System.out.println("Message: " + message);
 
             }
 
