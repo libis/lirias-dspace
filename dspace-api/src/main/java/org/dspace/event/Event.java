@@ -71,7 +71,7 @@ public class Event implements Serializable {
 
     public static final int INSTALL = 1 << 6; // object exits workspace/flow 64
 
-    public static final int DELETE_BITSTREAM = 1 << 7; // object exits workspace/flow 64
+    public static final int DELETE_BITSTREAM = 1 << 7; // bitstream deleted 128
 
     /**
      * Index of filter parts in their array:

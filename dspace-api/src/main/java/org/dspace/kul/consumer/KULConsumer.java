@@ -74,8 +74,21 @@ public class KULConsumer implements Consumer {
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
             System.out.print("Item install: " + event.getSubjectID());
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-        } else if (List.of(Event.DELETE_BITSTREAM, Event.ADD).contains(event.getEventType())
+            
+            // delete everything before last submit
+        } else if (Event.ADD == event.getEventType()
                 && event.getSubjectType() == Constants.BUNDLE) {
+            final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
+            System.out.print("Bundle: " + bundle);
+            for (final Item item : bundle.getItems()) {
+                // we listen to the ADD event only when the item is already installed
+                if (item.getMetadata().stream().anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance") && x.getValue().startsWith("Submitted by "))) {
+                    System.out.print("Item added: " + item);
+                // event.getObjectID() is the bitstream ID
+                    queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+                }
+            }
+        } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
             System.out.print("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
@@ -85,6 +98,8 @@ public class KULConsumer implements Consumer {
                     queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                 }
             }
+        } else { 
+            System.out.print("Unprocessed event: " + event.toString());
         }
     }
 
@@ -117,8 +132,12 @@ public class KULConsumer implements Consumer {
             switch (qi.getEventType()) {
 
                 case Event.ADD:
-                    System.out.print("\nReposit case\n");
-                    redepositCase(ctx, bitstream, item, bitstreams, groupsMap);
+                    System.out.print("\nRedeposit or add via DSpace UI case\n");
+                    if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
+                        redepositCase(ctx, bitstream, item, bitstreams, groupsMap);
+                    } else {
+                        dspaceAddCase(ctx, bitstream, item, bitstreams, groupsMap);
+                    }
                     break;
                 case Event.INSTALL:
                     System.out.print("\nDeposit case\n");
@@ -142,6 +161,34 @@ public class KULConsumer implements Consumer {
     }
 
     private void depositCase(final Context ctx, final Bitstream bitstream, final Item item,
+            final List<Bitstream> bitstreams,
+            final Map<String, Group> groupsMap) throws Exception {
+
+        final List<ResourcePolicy> policies = new ArrayList<>();
+        policies.add(readForGroup(ctx, groupsMap.get(ADMINS_LOCAL_GROUP)));
+
+        String message = MessageFormat.format("No. of bitstreams: {0} ", bitstreams.size());
+        for (Bitstream b : bitstreams) {
+            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}  bytes, checksum: {3} ({4})",
+                    b.getName(),
+                    b.getID().toString(),
+                    b.getSizeBytes(),
+                    b.getChecksum(),
+                    b.getChecksumAlgorithm());
+            String permissionMessage = getBitstreamPermissionText(ctx, b);
+            if (!permissionMessage.isBlank()) {
+                message += MessageFormat.format(", File permission: {0}", permissionMessage);
+            }
+            message += " ";
+        }
+        message = MessageFormat.format("Submitted by {0} ({1}) on {2} - {3}", ctx.getCurrentUser().getFullName(),
+                ctx.getCurrentUser().getEmail(), getDate(item), message);
+
+        doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
+
+    }
+
+    private void dspaceAddCase(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap) throws Exception {
 
