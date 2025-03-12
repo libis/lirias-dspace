@@ -5,13 +5,13 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.ResourcePolicy;
@@ -74,7 +74,7 @@ public class KULConsumer implements Consumer {
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
             System.out.print("Item install: " + event.getSubjectID());
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-        } else if (List.of(Event.DELETE, Event.ADD).contains(event.getEventType())
+        } else if (List.of(Event.DELETE_BITSTREAM, Event.ADD).contains(event.getEventType())
                 && event.getSubjectType() == Constants.BUNDLE) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
             System.out.print("Bundle: " + bundle);
@@ -124,7 +124,7 @@ public class KULConsumer implements Consumer {
                     System.out.print("\nDeposit case\n");
                     depositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
-                case Event.DELETE:
+                case Event.DELETE_BITSTREAM:
                     System.out.print("\nRemove case\n");
                     removeCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
@@ -219,14 +219,10 @@ public class KULConsumer implements Consumer {
                 ctx.getCurrentUser().getEmail(),
                 DCDate.getCurrent().toString(),
                 getBitstreamPermissionText(ctx, bitstream));
-        final List<ResourcePolicy> policies = List.of();
+        final List<ResourcePolicy> policies = Collections.emptyList();
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
 
     }
-
-    /**
-     * Helper methods
-     */
 
     private void doUpdate(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
@@ -244,10 +240,10 @@ public class KULConsumer implements Consumer {
             System.out.print("Change policies\n");
 
             if (bitstream != null) {
-                // changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
+                changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
             } else {
                 for (final Bitstream b : bitstreams) {
-                    // changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
+                    changeBitstreamPolicies(ctx, b, groupsMap.values(), policies);
                 }
             }
         }
