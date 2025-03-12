@@ -96,6 +96,10 @@ public class KULConsumer implements Consumer {
                     queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                 }
             }
+        } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
+            System.out.println("modify bitstream case");
+            ((Bitstream) event.getSubject(ctx)).getBundles().forEach(bundle -> bundle.getItems()
+                    .forEach(item -> queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()))));
         } else {
             System.out.println("Unprocessed event: " + event.toString());
         }
@@ -201,10 +205,10 @@ public class KULConsumer implements Consumer {
                     b.getID().toString(),
                     b.getSizeBytes());
 
-            if (bitstream!=null && b.getID() == bitstream.getID()) {
+            if (bitstream != null && b.getID() == bitstream.getID()) {
                 message += MessageFormat.format("bytes, checksum: {3} ({4})",
-                b.getChecksum(),
-                b.getChecksumAlgorithm());
+                        b.getChecksum(),
+                        b.getChecksumAlgorithm());
             }
             String permissionMessage = getBitstreamPermissionText(ctx, b);
             if (!permissionMessage.isBlank()) {
@@ -235,10 +239,10 @@ public class KULConsumer implements Consumer {
                     b.getName(),
                     b.getID().toString(),
                     b.getSizeBytes());
-            if (bitstream!=null && b.getID() == bitstream.getID()) {
+            if (bitstream != null && b.getID() == bitstream.getID()) {
                 message += MessageFormat.format("bytes, checksum: {3} ({4})",
-                b.getChecksum(),
-                b.getChecksumAlgorithm());
+                        b.getChecksum(),
+                        b.getChecksumAlgorithm());
             }
             String permissionMessage = getBitstreamPermissionText(ctx, b);
             if (!permissionMessage.isBlank()) {
