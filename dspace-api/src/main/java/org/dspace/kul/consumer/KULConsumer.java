@@ -74,7 +74,7 @@ public class KULConsumer implements Consumer {
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
             System.out.print("Item install: " + event.getSubjectID());
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-            
+
             // delete everything before last submit
         } else if (Event.ADD == event.getEventType()
                 && event.getSubjectType() == Constants.BUNDLE) {
@@ -82,9 +82,10 @@ public class KULConsumer implements Consumer {
             System.out.print("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
                 // we listen to the ADD event only when the item is already installed
-                if (item.getMetadata().stream().anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance") && x.getValue().startsWith("Submitted by "))) {
+                if (item.getMetadata().stream().anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance")
+                        && x.getValue().startsWith("Submitted by "))) {
                     System.out.print("Item added: " + item);
-                // event.getObjectID() is the bitstream ID
+                    // event.getObjectID() is the bitstream ID
                     queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                 }
             }
@@ -94,11 +95,11 @@ public class KULConsumer implements Consumer {
             for (final Item item : bundle.getItems()) {
                 if (!queue.stream().anyMatch(x -> x.getItemId().equals(item.getID()))) {
                     System.out.print("Item: " + item + " (from bundle)");
-                // event.getObjectID() is the bitstream ID
+                    // event.getObjectID() is the bitstream ID
                     queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                 }
             }
-        } else { 
+        } else {
             System.out.print("Unprocessed event: " + event.toString());
         }
     }
@@ -197,20 +198,29 @@ public class KULConsumer implements Consumer {
 
         String message = MessageFormat.format("No. of bitstreams: {0} ", bitstreams.size());
         for (Bitstream b : bitstreams) {
-            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}  bytes, checksum: {3} ({4})",
+
+            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}",
                     b.getName(),
                     b.getID().toString(),
-                    b.getSizeBytes(),
-                    b.getChecksum(),
-                    b.getChecksumAlgorithm());
+                    b.getSizeBytes());
+
+            if (bitstream!=null && b.getID() == bitstream.getID()) {
+                message += MessageFormat.format("bytes, checksum: {3} ({4})",
+                b.getChecksum(),
+                b.getChecksumAlgorithm());
+            }
             String permissionMessage = getBitstreamPermissionText(ctx, b);
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
             message += " ";
         }
-        message = MessageFormat.format("Submitted by {0} ({1}) on {2} - {3}", ctx.getCurrentUser().getFullName(),
-                ctx.getCurrentUser().getEmail(), getDate(item), message);
+
+        message = MessageFormat.format("Bitstream added by {0} ({1}) on {2} - {3}",
+                ctx.getCurrentUser().getFullName(),
+                ctx.getCurrentUser().getEmail(),
+                DCDate.getCurrent().toString(),
+                message);
 
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
 
@@ -223,12 +233,16 @@ public class KULConsumer implements Consumer {
         // policies.add(readForGroup(ctx, groupsMap.get(ADMINS_LOCAL_GROUP)));
         String message = MessageFormat.format("No. of bitstreams: {0} ", bitstreams.size());
         for (Bitstream b : bitstreams) {
-            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}  bytes, checksum: {3} ({4})",
+
+            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}",
                     b.getName(),
                     b.getID().toString(),
-                    b.getSizeBytes(),
-                    b.getChecksum(),
-                    b.getChecksumAlgorithm());
+                    b.getSizeBytes());
+            if (bitstream!=null && b.getID() == bitstream.getID()) {
+                message += MessageFormat.format("bytes, checksum: {3} ({4})",
+                b.getChecksum(),
+                b.getChecksumAlgorithm());
+            }
             String permissionMessage = getBitstreamPermissionText(ctx, b);
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
@@ -251,6 +265,14 @@ public class KULConsumer implements Consumer {
         String message = MessageFormat.format("Bitstream removed by {0} ({1}) on {2} - {3}",
                 ctx.getCurrentUser().getFullName(),
                 ctx.getCurrentUser().getEmail(), DCDate.getCurrent().toString());
+
+        for (Bitstream b : bitstreams) {
+
+            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}",
+                    b.getName(),
+                    b.getID().toString(),
+                    b.getSizeBytes());
+        }
         final List<ResourcePolicy> policies = List.of();
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
     }
