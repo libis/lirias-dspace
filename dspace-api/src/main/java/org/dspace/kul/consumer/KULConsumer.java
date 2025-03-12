@@ -155,8 +155,8 @@ public class KULConsumer implements Consumer {
                     removeCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.MODIFY:
-                    System.out.println("\nEdit case\n");
-                    editCase(ctx, bitstream, item, bitstreams, groupsMap);
+                    System.out.println("\nEdit permission case\n");
+                    editBitstreamPermissionCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 default:
                     log.error("event consume not implemented: " + qi.getEventType());
@@ -283,7 +283,7 @@ public class KULConsumer implements Consumer {
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
     }
 
-    private void editCase(final Context ctx, final Bitstream bitstream, final Item item,
+    private void editBitstreamPermissionCase(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap) throws Exception {
         String message = MessageFormat.format(
