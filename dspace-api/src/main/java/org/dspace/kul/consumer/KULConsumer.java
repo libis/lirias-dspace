@@ -96,8 +96,7 @@ public class KULConsumer implements Consumer {
                         if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
                             queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()));
                         }
-                    }
-                    ));
+                    }));
         } else {
             System.out.println("Unprocessed event: " + event.toString());
         }
@@ -204,7 +203,7 @@ public class KULConsumer implements Consumer {
                     b.getSizeBytes());
 
             if (bitstream != null && b.getID() == bitstream.getID()) {
-                message += MessageFormat.format("bytes, checksum: {3} ({4})",
+                message += MessageFormat.format("bytes, checksum: {0} ({1})",
                         b.getChecksum(),
                         b.getChecksumAlgorithm());
             }
@@ -238,7 +237,7 @@ public class KULConsumer implements Consumer {
                     b.getID().toString(),
                     b.getSizeBytes());
             if (bitstream != null && b.getID() == bitstream.getID()) {
-                message += MessageFormat.format("bytes, checksum: {3} ({4})",
+                message += MessageFormat.format("bytes, checksum: {0} ({1})",
                         b.getChecksum(),
                         b.getChecksumAlgorithm());
             }
@@ -265,11 +264,11 @@ public class KULConsumer implements Consumer {
                 ctx.getCurrentUser().getFullName(),
                 ctx.getCurrentUser().getEmail(), DCDate.getCurrent().toString());
 
-            message += "- " + MessageFormat.format("{0} (ID: {1}): {2}",
-                    bitstream.getName(),
-                    bitstream.getID().toString(),
-                    bitstream.getSizeBytes());
-        
+        message += "- " + MessageFormat.format("{0} (ID: {1}): {2}",
+                bitstream.getName(),
+                bitstream.getID().toString(),
+                bitstream.getSizeBytes());
+
         final List<ResourcePolicy> policies = List.of();
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
     }
@@ -278,12 +277,12 @@ public class KULConsumer implements Consumer {
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap) throws Exception {
         String message = MessageFormat.format(
-                "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} from {4} to ",
+                "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to ",
                 bitstream.getName(),
                 bitstream.getID(),
+                DCDate.getCurrent().toString(),
                 ctx.getCurrentUser().getFullName(),
                 ctx.getCurrentUser().getEmail(),
-                DCDate.getCurrent().toString(),
                 getBitstreamPermissionText(ctx, bitstream));
         final List<ResourcePolicy> policies = Collections.emptyList();
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
