@@ -88,14 +88,7 @@ public class KULConsumer implements Consumer {
             }
         } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
-            System.out.println("Bundle: " + bundle);
-            for (final Item item : bundle.getItems()) {
-                if (!queue.stream().anyMatch(x -> x.getItemId().equals(item.getID()))) {
-                    System.out.println("Item: " + item + " (from bundle)");
-                    // event.getObjectID() is the bitstream ID
-                    queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
-                }
-            }
+            queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
         } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
             System.out.println("modify bitstream case");
             ((Bitstream) event.getSubject(ctx)).getBundles().forEach(bundle -> bundle.getItems()
@@ -268,17 +261,15 @@ public class KULConsumer implements Consumer {
     private void removeCase(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap) throws Exception {
-        String message = MessageFormat.format("Bitstream removed by {0} ({1}) on {2} - {3}",
+        String message = MessageFormat.format("Bitstream removed by {0} ({1}) on {2} ",
                 ctx.getCurrentUser().getFullName(),
                 ctx.getCurrentUser().getEmail(), DCDate.getCurrent().toString());
 
-        for (Bitstream b : bitstreams) {
-
             message += "- " + MessageFormat.format("{0} (ID: {1}): {2}",
-                    b.getName(),
-                    b.getID().toString(),
-                    b.getSizeBytes());
-        }
+                    bitstream.getName(),
+                    bitstream.getID().toString(),
+                    bitstream.getSizeBytes());
+        
         final List<ResourcePolicy> policies = List.of();
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
     }
