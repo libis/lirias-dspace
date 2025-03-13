@@ -57,13 +57,13 @@ public class KULConsumer implements Consumer {
 
     @Override
     public void initialize() throws Exception {
-        System.out.println("\nKUL Consumer init. \n");
+        System.out.println("KUL Consumer init. ");
 
     }
 
     @Override
     public void finish(Context ctx) throws Exception {
-        System.out.println("\nKUL Consumer finished.\n");
+        System.out.println("KUL Consumer finished.");
     }
 
     @Override
@@ -124,15 +124,15 @@ public class KULConsumer implements Consumer {
 
                 }
             }
-            System.out.println("\nItem: " + item);
-            System.out.println("\nBitstream: " + bitstream);
-            System.out.println("\nBitstreams: " + bitstreams);
-            System.out.println("\nGroupsmap: " + groupsMap);
+            System.out.println("Item: " + item);
+            System.out.println("Bitstream: " + bitstream);
+            System.out.println("Bitstreams: " + bitstreams);
+            System.out.println("Groupsmap: " + groupsMap);
 
             switch (qi.getEventType()) {
 
                 case Event.ADD:
-                    System.out.println("\nRedeposit or add via DSpace UI case\n");
+                    System.out.println("Redeposit or add via DSpace UI case");
                     if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
                         redepositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     } else {
@@ -140,15 +140,15 @@ public class KULConsumer implements Consumer {
                     }
                     break;
                 case Event.INSTALL:
-                    System.out.println("\nDeposit case\n");
+                    System.out.println("Deposit case");
                     depositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.DELETE_BITSTREAM:
-                    System.out.println("\nRemove case\n");
+                    System.out.println("Remove case");
                     removeCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.MODIFY:
-                    System.out.println("\nEdit permission case\n");
+                    System.out.println("Edit permission case");
                     editBitstreamPermissionCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 default:
@@ -303,7 +303,7 @@ public class KULConsumer implements Consumer {
 
         if (policies != null && !policies.isEmpty()) {
 
-            System.out.println("Change policies\n");
+            System.out.println("Change policies");
 
             if (bitstream != null) {
                 changeBitstreamPolicies(ctx, bitstream, groupsMap.values(), policies);
