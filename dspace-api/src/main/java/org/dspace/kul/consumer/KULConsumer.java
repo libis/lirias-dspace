@@ -71,8 +71,6 @@ public class KULConsumer implements Consumer {
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
             System.out.println("Item install: " + event.getSubjectID());
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-
-            // delete everything before last submit
         } else if (Event.ADD == event.getEventType()
                 && event.getSubjectType() == Constants.BUNDLE) {
             final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
@@ -182,6 +180,11 @@ public class KULConsumer implements Consumer {
         }
         message = MessageFormat.format("Submitted by {0} ({1}) on {2} - {3}", ctx.getCurrentUser().getFullName(),
                 ctx.getCurrentUser().getEmail(), getDate(item), message);
+
+        // Remove previous provenance messages
+        itemService.removeMetadataValues(ctx, item,
+                itemService.getMetadata(item, "dc", "description", "provenance", Item.ANY));
+        itemService.update(ctx, item);
 
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
 
