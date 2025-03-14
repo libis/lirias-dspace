@@ -22,6 +22,7 @@ import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
+import org.dspace.content.MetadataValue;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.BundleService;
@@ -281,17 +282,33 @@ public class KULConsumer implements Consumer {
     private void editBitstreamPermissionCase(final Context ctx, final Bitstream bitstream, final Item item,
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap) throws Exception {
-        String message = MessageFormat.format(
-                "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to ",
-                bitstream.getName(),
-                bitstream.getID(),
-                DCDate.getCurrent().toString(),
-                ctx.getCurrentUser().getFullName(),
-                ctx.getCurrentUser().getEmail(),
-                getBitstreamPermissionText(ctx, bitstream));
-        final List<ResourcePolicy> policies = Collections.emptyList();
-        doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
 
+        final String newPermission = getBitstreamPermissionText(ctx, bitstream);
+        final String previousPermission = getPreviousBitstreamPermissionText(ctx, bitstream);
+
+        if (previousPermission == null || !newPermission.equals(previousPermission)) {
+            // If permission is first or has changed: write to bitstream metadata
+            // (dc.bitstream.permissions)
+            System.out.println("Writing new permission to bitstream metadata: " + newPermission);
+            bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream", "permissions", "en",
+                    DCDate.getCurrent().toDate() + ";" + newPermission);
+            bitstreamService.update(ctx, bitstream);
+        }
+
+        if (!newPermission.equals(previousPermission)) {
+            // If permission has changed: add message to item provenance metadata
+            String message = MessageFormat.format(
+                    "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to {6}",
+                    bitstream.getName(),
+                    bitstream.getID(),
+                    DCDate.getCurrent().toString(),
+                    ctx.getCurrentUser().getFullName(),
+                    ctx.getCurrentUser().getEmail(),
+                    previousPermission,
+                    newPermission);
+            final List<ResourcePolicy> policies = Collections.emptyList();
+            doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
+        }
     }
 
     private void doUpdate(final Context ctx, final Bitstream bitstream, final Item item,
@@ -318,17 +335,8 @@ public class KULConsumer implements Consumer {
             }
         }
         if (message != null) {
-            if (message.contains("were updated on")) {
-                // if permission is updated, add the new permission to the message
-                // ("The permissions of bitstream ... updated from ... to ...")
-                writeMessage(ctx, item, message + getBitstreamPermissionText(ctx, bitstream));
-                System.out.println("Message: " + message + getBitstreamPermissionText(ctx, bitstream));
-            } else {
-                writeMessage(ctx, item, message);
-                System.out.println("Message: " + message);
-
-            }
-
+            writeMessage(ctx, item, message);
+            System.out.println("Message: " + message);
         }
     }
 
@@ -351,6 +359,29 @@ public class KULConsumer implements Consumer {
             authorizeService.removeGroupPolicies(ctx, bitstream, group);
         }
         authorizeService.addPolicies(ctx, toAdd, bitstream);
+    }
+
+    public String getPreviousBitstreamPermissionText(Context ctx, Bitstream bitstream) {
+        String currentPermission = null;
+        Date currentPermissionDate = null;
+        System.out.println("Parsing permissions in bitstream metadata");
+        for (MetadataValue bitstreamMetadata : bitstream.getMetadata()) {
+            if (bitstreamMetadata.getMetadataField().getElement().equals("bitstream")
+                    && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
+                String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
+                if (temp.length == 2) {
+                    Date previousPermissionDate = new Date(temp[0]);
+                    String previousPermission = temp[1];
+                    if (currentPermissionDate == null || previousPermissionDate.after(currentPermissionDate)) {
+                        currentPermissionDate = previousPermissionDate;
+                        currentPermission = previousPermission;
+                    }
+                }
+                System.out.println("Latest permission found: " + currentPermissionDate + " " +
+                        currentPermission);
+            }
+        }
+        return currentPermission;
     }
 
     public String getBitstreamPermissionText(Context ctx, Bitstream bs) {
