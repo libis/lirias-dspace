@@ -81,7 +81,9 @@ public class KULConsumer implements Consumer {
                         && x.getValue().startsWith("Submitted by "))) {
                     System.out.println("Item added: " + item);
                     // event.getObjectID() is the bitstream ID
-                    queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+                    if (bundle.getName().equals("ORIGINAL")) {
+                        queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+                    }
                 }
             }
         } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
