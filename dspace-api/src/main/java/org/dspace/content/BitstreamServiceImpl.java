@@ -285,7 +285,7 @@ public class BitstreamServiceImpl extends DSpaceObjectServiceImpl<Bitstream> imp
             // deletion event
             for (Item item : bundle.getItems()) {
                 context.addEvent(new Event(Event.DELETE_BITSTREAM, Constants.ITEM, item.getID(),
-                Constants.BITSTREAM, bitstream.getID(), ""));
+                Constants.BITSTREAM, bitstream.getID(), bundle.getName().toString()));
             }
         }
 

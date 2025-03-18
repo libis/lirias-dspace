@@ -88,16 +88,20 @@ public class KULConsumer implements Consumer {
                 }
             }
         } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
-            final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
-            queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+            final String bundleName = event.getDetail();
+            if (bundleName.equals("ORIGINAL")) {
+                queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+            }
         } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
             System.out.println("modify bitstream case");
-            ((Bitstream) event.getSubject(ctx)).getBundles().forEach(bundle -> bundle.getItems()
-                    .forEach(item -> {
-                        if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
-                            queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()));
-                        }
-                    }));
+            ((Bitstream) event.getSubject(ctx)).getBundles().stream()
+                    .filter(bundle -> bundle.getName().toString().equals("ORIGINAL"))
+                    .forEach(bundle -> bundle.getItems()
+                            .forEach(item -> {
+                                if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
+                                    queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()));
+                                }
+                            }));
         } else {
             System.out.println("Unprocessed event: " + event.toString());
         }
