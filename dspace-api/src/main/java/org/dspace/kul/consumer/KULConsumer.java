@@ -290,28 +290,29 @@ public class KULConsumer implements Consumer {
         final String newPermission = getBitstreamPermissionText(ctx, bitstream);
         final String previousPermission = getPreviousBitstreamPermissionText(ctx, bitstream);
 
-        if (previousPermission == null || !newPermission.equals(previousPermission)) {
+        if (!newPermission.equals(previousPermission)) {
             // If permission is first or has changed: write to bitstream metadata
             // (dc.bitstream.permissions)
-            System.out.println("Writing new permission to bitstream metadata: " + newPermission);
+            System.out.println("Writing new permission to bitstream metadata: " + newPermission + " (Previous permission: " + previousPermission + ")");
             bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream", "permissions", "en",
                     DCDate.getCurrent().toDate() + ";" + newPermission);
             bitstreamService.update(ctx, bitstream);
-        }
 
-        if (!newPermission.equals(previousPermission)) {
-            // If permission has changed: add message to item provenance metadata
-            String message = MessageFormat.format(
-                    "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to {6}",
-                    bitstream.getName(),
-                    bitstream.getID(),
-                    DCDate.getCurrent().toString(),
-                    ctx.getCurrentUser().getFullName(),
-                    ctx.getCurrentUser().getEmail(),
-                    previousPermission,
-                    newPermission);
-            final List<ResourcePolicy> policies = Collections.emptyList();
-            doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
+            if (previousPermission != null) {
+                // If permission is changing and not first: add message to item provenance
+                // metadata
+                String message = MessageFormat.format(
+                        "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to {6}",
+                        bitstream.getName(),
+                        bitstream.getID(),
+                        DCDate.getCurrent().toString(),
+                        ctx.getCurrentUser().getFullName(),
+                        ctx.getCurrentUser().getEmail(),
+                        previousPermission,
+                        newPermission);
+                final List<ResourcePolicy> policies = Collections.emptyList();
+                doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
+            }
         }
     }
 
@@ -381,8 +382,6 @@ public class KULConsumer implements Consumer {
                         currentPermission = previousPermission;
                     }
                 }
-                System.out.println("Latest permission found: " + currentPermissionDate + " " +
-                        currentPermission);
             }
         }
         return currentPermission;
