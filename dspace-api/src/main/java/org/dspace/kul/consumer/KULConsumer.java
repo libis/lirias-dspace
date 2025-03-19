@@ -293,7 +293,8 @@ public class KULConsumer implements Consumer {
         if (!newPermission.equals(previousPermission)) {
             // If permission is first or has changed: write to bitstream metadata
             // (dc.bitstream.permissions)
-            System.out.println("Writing new permission to bitstream metadata: " + newPermission + " (Previous permission: " + previousPermission + ")");
+            System.out.println("Writing new permission to bitstream metadata: " + newPermission
+                    + " (Previous permission: " + previousPermission + ")");
             bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream", "permissions", "en",
                     DCDate.getCurrent().toDate() + ";" + newPermission);
             bitstreamService.update(ctx, bitstream);
@@ -320,12 +321,6 @@ public class KULConsumer implements Consumer {
             final List<Bitstream> bitstreams,
             final Map<String, Group> groupsMap, final String message, final List<ResourcePolicy> policies)
             throws Exception {
-
-        System.out.println("Do update context: " + ctx);
-        System.out.println("Do update policies: " + policies);
-        System.out.println("Do update bitstream: " + bitstream);
-        System.out.println("Do update bitstreams: " + bitstreams);
-        System.out.println("Do update groupsMap: " + groupsMap.values());
 
         if (policies != null && !policies.isEmpty()) {
 
