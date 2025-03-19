@@ -183,6 +183,11 @@ public class KULConsumer implements Consumer {
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
+            if (permissionMessage=="EMBARGO") {
+                for (ResourcePolicy policy : authorizeService.getPoliciesActionFilter(ctx, b, Constants.READ)) {
+                    message += getPolicyDates(policy);
+                }
+            }
             message += " ";
         }
         message = MessageFormat.format("Submitted by {0} ({1}) on {2} - {3}", ctx.getCurrentUser().getFullName(),
@@ -194,6 +199,22 @@ public class KULConsumer implements Consumer {
         itemService.update(ctx, item);
 
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
+
+    }
+
+    private String getPolicyDates(ResourcePolicy policy) {
+        Date startDate = policy.getStartDate();
+        Date endDate = policy.getEndDate();
+        String result = "";
+        if ( startDate != null) {
+            result += MessageFormat.format(", {0}", startDate.toString());
+
+        }
+        if ( endDate != null) {
+            result += MessageFormat.format(" to {0}", endDate.toString());
+
+        }
+        return result;
 
     }
 
@@ -221,6 +242,12 @@ public class KULConsumer implements Consumer {
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
+            if (permissionMessage=="EMBARGO") {
+                for (ResourcePolicy policy : authorizeService.getPoliciesActionFilter(ctx, b, Constants.READ)) {
+                    message += getPolicyDates(policy);
+                }
+            }
+
             message += " ";
         }
 
@@ -254,6 +281,11 @@ public class KULConsumer implements Consumer {
             String permissionMessage = getBitstreamPermissionText(ctx, b);
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
+            }
+            if (permissionMessage=="EMBARGO") {
+                for (ResourcePolicy policy : authorizeService.getPoliciesActionFilter(ctx, b, Constants.READ)) {
+                    message += getPolicyDates(policy);
+                }
             }
             message += " ";
         }
@@ -387,20 +419,17 @@ public class KULConsumer implements Consumer {
             List<ResourcePolicy> resourcePolicies = authorizeService.getPoliciesActionFilter(ctx, bs, Constants.READ);
             String result = "PRIVATE";
 
-            for (ResourcePolicy policy : resourcePolicies) {
+            for (ResourcePolicy policy : resourcePolicies) { // if empty -> PRIVATE. will not run
+                
                 Group group = policy.getGroup();
                 Date startDate = policy.getStartDate();
-                Date endDate = policy.getEndDate();
                 Date now = DCDate.getCurrent().toDate();
 
                 if (group == groupService.findByName(ctx, ANONYMOUS_GROUP)) {
-                    if (startDate == null || startDate.before(now)) {
+                    if (startDate == null || startDate.before(now)) { // anonymous, no start date or earlier than now -> PUBLIC
                         return "PUBLIC";
-                    } else if (startDate.after(now)) {
-                        result = MessageFormat.format("EMBARGO, {0}", startDate);
-                        if (policy.getEndDate() != null) {
-                            result += MessageFormat.format(" to {0}", endDate);
-                        }
+                    } else if (startDate.after(now)) { // anonymous, start date after now -> embargo message 
+                        result = "EMBARGO";
                     }
                 } else if (group == groupService.findByName(ctx, INTRANET_GROUP)) {
                     result = "INTRANET";
