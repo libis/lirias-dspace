@@ -419,16 +419,16 @@ public class KULConsumer implements Consumer {
             List<ResourcePolicy> resourcePolicies = authorizeService.getPoliciesActionFilter(ctx, bs, Constants.READ);
             String result = "PRIVATE";
 
-            for (ResourcePolicy policy : resourcePolicies) { // if empty -> PRIVATE. will not run
+            for (ResourcePolicy policy : resourcePolicies) { 
                 
                 Group group = policy.getGroup();
                 Date startDate = policy.getStartDate();
                 Date now = DCDate.getCurrent().toDate();
 
                 if (group == groupService.findByName(ctx, ANONYMOUS_GROUP)) {
-                    if (startDate == null || startDate.before(now)) { // anonymous, no start date or earlier than now -> PUBLIC
+                    if (startDate == null || startDate.before(now)) { 
                         return "PUBLIC";
-                    } else if (startDate.after(now)) { // anonymous, start date after now -> embargo message 
+                    } else if (startDate.after(now)) { 
                         result = "EMBARGO";
                     }
                 } else if (group == groupService.findByName(ctx, INTRANET_GROUP)) {
