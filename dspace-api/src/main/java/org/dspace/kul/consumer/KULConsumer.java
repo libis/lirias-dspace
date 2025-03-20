@@ -2,6 +2,8 @@ package org.dspace.kul.consumer;
 
 import java.sql.SQLException;
 import java.text.MessageFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -393,7 +395,7 @@ public class KULConsumer implements Consumer {
         authorizeService.addPolicies(ctx, toAdd, bitstream);
     }
 
-    public String getPreviousBitstreamPermissionText(Context ctx, Bitstream bitstream) {
+    public String getPreviousBitstreamPermissionText(Context ctx, Bitstream bitstream) throws ParseException {
         String currentPermission = null;
         Date currentPermissionDate = null;
         System.out.println("Parsing permissions in bitstream metadata");
@@ -402,7 +404,7 @@ public class KULConsumer implements Consumer {
                     && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
                 String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
                 if (temp.length == 2) {
-                    Date previousPermissionDate = new Date(temp[0]);
+                    Date previousPermissionDate = (new SimpleDateFormat()).parse(temp[0]);
                     String previousPermission = temp[1];
                     if (currentPermissionDate == null || previousPermissionDate.after(currentPermissionDate)) {
                         currentPermissionDate = previousPermissionDate;
