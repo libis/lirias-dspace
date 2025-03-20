@@ -19,7 +19,8 @@ public class KULEvent {
     private final Services services;
 
     public KULEvent(final Context ctx, final Bitstream bitstream, final Item item, final List<Bitstream> bitstreams,
-            final Map<String, Group> groupsMap, final ConsumeCaseEnum consumeCaseEnum, final boolean phd, final Services services) {
+            final Map<String, Group> groupsMap, final ConsumeCaseEnum consumeCaseEnum, final boolean phd,
+            final Services services) {
         this.ctx = ctx;
         this.bitstream = bitstream;
         this.item = item;
@@ -33,24 +34,31 @@ public class KULEvent {
     public Context getCtx() {
         return ctx;
     }
+
     public Bitstream getBitstream() {
         return bitstream;
     }
+
     public Item getItem() {
         return item;
     }
+
     public List<Bitstream> getBitstreams() {
         return bitstreams;
     }
+
     public Map<String, Group> getGroupsMap() {
         return groupsMap;
     }
+
     public ConsumeCaseEnum getConsumeCaseEnum() {
         return consumeCaseEnum;
     }
+
     public boolean isPhd() {
         return phd;
     }
+
     public Services getServices() {
         return services;
     }
