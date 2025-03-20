@@ -17,46 +17,27 @@ import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.ResourcePolicy;
-import org.dspace.authorize.factory.AuthorizeServiceFactory;
-import org.dspace.authorize.service.AuthorizeService;
-import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
 import org.dspace.content.MetadataValue;
-import org.dspace.content.factory.ContentServiceFactory;
-import org.dspace.content.service.BitstreamService;
-import org.dspace.content.service.BundleService;
-import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.eperson.Group;
-import org.dspace.eperson.factory.EPersonServiceFactory;
-import org.dspace.eperson.service.EPersonService;
-import org.dspace.eperson.service.GroupService;
 import org.dspace.event.Consumer;
 import org.dspace.event.Event;
 
 public class KULConsumer implements Consumer {
-
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(KULConsumer.class);
     private static final String ANONYMOUS_GROUP = "Anonymous";
     private static final String INTRANET_GROUP = "registered_users";
     private static final String ADMINS_LOCAL_GROUP = "Admins_local";
     private static final List<String> ALL_GROUP_NAMES = Arrays.asList(ANONYMOUS_GROUP, INTRANET_GROUP,
             ADMINS_LOCAL_GROUP);
 
-    protected AuthorizeService authorizeService = AuthorizeServiceFactory.getInstance().getAuthorizeService();
-    protected EPersonService ePersonService = EPersonServiceFactory.getInstance().getEPersonService();
-    protected GroupService groupService = EPersonServiceFactory.getInstance().getGroupService();
-    protected ResourcePolicyService resourcePolicyService = AuthorizeServiceFactory.getInstance()
-            .getResourcePolicyService();
-    protected ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-    protected BundleService bundleService = ContentServiceFactory.getInstance().getBundleService();
-    protected BitstreamService bitstreamService = ContentServiceFactory.getInstance().getBitstreamService();
-
     private final Set<QueuedItem> queue = new HashSet<>();
-    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(KULConsumer.class);
+    private final Services services = new Services();
 
     @Override
     public void initialize() throws Exception {
@@ -76,7 +57,7 @@ public class KULConsumer implements Consumer {
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
         } else if (Event.ADD == event.getEventType()
                 && event.getSubjectType() == Constants.BUNDLE) {
-            final Bundle bundle = bundleService.find(ctx, event.getSubjectID());
+            final Bundle bundle = services.bundleService.find(ctx, event.getSubjectID());
             System.out.println("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
                 // we listen to the ADD event only when the item is already installed
@@ -113,57 +94,72 @@ public class KULConsumer implements Consumer {
     public void end(final Context ctx) throws Exception {
         final Map<String, Group> groupsMap = new HashMap<>();
         for (final String groupName : ALL_GROUP_NAMES) {
-            groupsMap.put(groupName, groupService.findByName(ctx, groupName));
+            groupsMap.put(groupName, services.groupService.findByName(ctx, groupName));
         }
 
         for (final QueuedItem qi : queue) {
-            final Item item = itemService.find(ctx, qi.getItemId());
+            final Item item = services.itemService.find(ctx, qi.getItemId());
             Bitstream bitstream = null;
             if (qi.getBitstreamId() != null) {
-                bitstream = bitstreamService.find(ctx, qi.getBitstreamId());
+                bitstream = services.bitstreamService.find(ctx, qi.getBitstreamId());
 
             }
             final List<Bitstream> bitstreams = new ArrayList<>();
             if (qi.getItemId() != null) {
-                for (final Bundle bundle : itemService.getBundles(item, "ORIGINAL")) {
+                for (final Bundle bundle : services.itemService.getBundles(item, "ORIGINAL")) {
                     bitstreams.addAll(bundle.getBitstreams());
 
                 }
             }
-            System.out.println("Item: " + item);
-            System.out.println("Bitstream: " + bitstream);
-            System.out.println("Bitstreams: " + bitstreams);
-            System.out.println("Groupsmap: " + groupsMap);
 
+            ConsumeCaseEnum caseEnum = null;
             switch (qi.getEventType()) {
-
                 case Event.ADD:
                     System.out.println("Redeposit or add via DSpace UI case");
                     if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
+                        caseEnum = ConsumeCaseEnum.REDEPOSIT;
                         redepositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     } else {
+                        caseEnum = ConsumeCaseEnum.ADD_VIA_UI;
                         dspaceAddCase(ctx, bitstream, item, bitstreams, groupsMap);
                     }
                     break;
                 case Event.INSTALL:
                     System.out.println("Deposit case");
+                    caseEnum = ConsumeCaseEnum.DEPOSIT;
                     depositCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.DELETE_BITSTREAM:
                     System.out.println("Remove case");
+                    caseEnum = ConsumeCaseEnum.REMOVE;
                     removeCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 case Event.MODIFY:
                     System.out.println("Edit permission case");
+                    caseEnum = ConsumeCaseEnum.EDIT_PERMISSION;
                     editBitstreamPermissionCase(ctx, bitstream, item, bitstreams, groupsMap);
                     break;
                 default:
                     log.error("event consume not implemented: " + qi.getEventType());
                     break;
             }
+            if (caseEnum != null) {
+                final boolean phd = isPhd();
+                final KULEvent e = new KULEvent(ctx, bitstream, item, bitstreams, groupsMap, caseEnum, phd, services);
+                final String message = Provenance.getMessage(e);
+                final List<ResourcePolicy> policies = Permissions.getPolicies(e);
+                //TODO
+                //doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
+                Mailing.notify(e);
+            }
         }
 
         queue.clear();
+    }
+
+    private boolean isPhd() {
+        //TODO
+        return false;
     }
 
     private void depositCase(final Context ctx, final Bitstream bitstream, final Item item,
@@ -186,7 +182,8 @@ public class KULConsumer implements Consumer {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
             if (permissionMessage == "EMBARGO") {
-                for (final ResourcePolicy policy : authorizeService.getPoliciesActionFilter(ctx, b, Constants.READ)) {
+                for (final ResourcePolicy policy : services.authorizeService.getPoliciesActionFilter(ctx, b,
+                        Constants.READ)) {
                     message += getPolicyDates(policy);
                 }
             }
@@ -196,9 +193,9 @@ public class KULConsumer implements Consumer {
                 ctx.getCurrentUser().getEmail(), getDate(item), message);
 
         // Remove previous provenance messages
-        itemService.removeMetadataValues(ctx, item,
-                itemService.getMetadata(item, "dc", "description", "provenance", Item.ANY));
-        itemService.update(ctx, item);
+        services.itemService.removeMetadataValues(ctx, item,
+                services.itemService.getMetadata(item, "dc", "description", "provenance", Item.ANY));
+        services.itemService.update(ctx, item);
 
         doUpdate(ctx, bitstream, item, bitstreams, groupsMap, message, policies);
 
@@ -245,7 +242,8 @@ public class KULConsumer implements Consumer {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
             if (permissionMessage == "EMBARGO") {
-                for (final ResourcePolicy policy : authorizeService.getPoliciesActionFilter(ctx, b, Constants.READ)) {
+                for (final ResourcePolicy policy : services.authorizeService.getPoliciesActionFilter(ctx, b,
+                        Constants.READ)) {
                     message += getPolicyDates(policy);
                 }
             }
@@ -285,7 +283,8 @@ public class KULConsumer implements Consumer {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
             if (permissionMessage == "EMBARGO") {
-                for (final ResourcePolicy policy : authorizeService.getPoliciesActionFilter(ctx, b, Constants.READ)) {
+                for (final ResourcePolicy policy : services.authorizeService.getPoliciesActionFilter(ctx, b,
+                        Constants.READ)) {
                     message += getPolicyDates(policy);
                 }
             }
@@ -329,9 +328,9 @@ public class KULConsumer implements Consumer {
             // (dc.bitstream.permissions)
             System.out.println("Writing new permission to bitstream metadata: " + newPermission
                     + " (Previous permission: " + previousPermission + ")");
-            bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream", "permissions", "en",
+            services.bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream", "permissions", "en",
                     DCDate.getCurrent().toDate() + ";" + newPermission);
-            bitstreamService.update(ctx, bitstream);
+            services.bitstreamService.update(ctx, bitstream);
 
             if (previousPermission != null) {
                 // If permission is changing and not first: add message to item provenance
@@ -375,7 +374,7 @@ public class KULConsumer implements Consumer {
     }
 
     private String getDate(final Item item) {
-        String date = itemService.getMetadataFirstValue(item, "dc", "date", "accessioned", Item.ANY);
+        String date = services.itemService.getMetadataFirstValue(item, "dc", "date", "accessioned", Item.ANY);
         if (date.isBlank()) {
             date = DCDate.getCurrent().toString();
         }
@@ -383,16 +382,16 @@ public class KULConsumer implements Consumer {
     }
 
     private void writeMessage(final Context ctx, final Item item, final String message) throws Exception {
-        itemService.addMetadata(ctx, item, "dc", "description", "provenance", "en", message);
-        itemService.update(ctx, item);
+        services.itemService.addMetadata(ctx, item, "dc", "description", "provenance", "en", message);
+        services.itemService.update(ctx, item);
     }
 
     private void changeBitstreamPolicies(final Context ctx, final Bitstream bitstream, final Collection<Group> toRemove,
             final List<ResourcePolicy> toAdd) throws Exception {
         for (final Group group : toRemove) {
-            authorizeService.removeGroupPolicies(ctx, bitstream, group);
+            services.authorizeService.removeGroupPolicies(ctx, bitstream, group);
         }
-        authorizeService.addPolicies(ctx, toAdd, bitstream);
+        services.authorizeService.addPolicies(ctx, toAdd, bitstream);
     }
 
     public String getPreviousBitstreamPermissionText(final Context ctx, final Bitstream bitstream)
@@ -419,7 +418,7 @@ public class KULConsumer implements Consumer {
 
     public String getBitstreamPermissionText(final Context ctx, final Bitstream bs) {
         try {
-            final List<ResourcePolicy> resourcePolicies = authorizeService.getPoliciesActionFilter(ctx, bs,
+            final List<ResourcePolicy> resourcePolicies = services.authorizeService.getPoliciesActionFilter(ctx, bs,
                     Constants.READ);
             String result = "PRIVATE";
 
@@ -429,13 +428,13 @@ public class KULConsumer implements Consumer {
                 final Date startDate = policy.getStartDate();
                 final Date now = DCDate.getCurrent().toDate();
 
-                if (group == groupService.findByName(ctx, ANONYMOUS_GROUP)) {
+                if (group == services.groupService.findByName(ctx, ANONYMOUS_GROUP)) {
                     if (startDate == null || startDate.before(now)) {
                         return "PUBLIC";
                     } else if (startDate.after(now)) {
                         result = "EMBARGO";
                     }
-                } else if (group == groupService.findByName(ctx, INTRANET_GROUP)) {
+                } else if (group == services.groupService.findByName(ctx, INTRANET_GROUP)) {
                     result = "INTRANET";
                 }
             }
@@ -447,7 +446,7 @@ public class KULConsumer implements Consumer {
     }
 
     private ResourcePolicy readForGroup(final Context ctx, final Group group) throws Exception {
-        final ResourcePolicy rp = resourcePolicyService.create(ctx);
+        final ResourcePolicy rp = services.resourcePolicyService.create(ctx);
         rp.setAction(Constants.READ);
         rp.setGroup(group);
         return rp;
