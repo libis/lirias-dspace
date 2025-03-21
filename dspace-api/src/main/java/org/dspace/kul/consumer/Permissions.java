@@ -54,7 +54,9 @@ public class Permissions {
         for (final Group group : event.getGroupsMap().values()) {
             event.getServices().authorizeService.removeGroupPolicies(event.getCtx(), bitstream, group);
         }
-        event.getServices().authorizeService.addPolicies(event.getCtx(), toAdd, bitstream);
+        if (!toAdd.isEmpty()) {
+            event.getServices().authorizeService.addPolicies(event.getCtx(), toAdd, bitstream);
+        }
     }
 
     private static ResourcePolicy readForGroup(final KULEvent event, final Group group) throws Exception {
