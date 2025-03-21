@@ -17,10 +17,11 @@ public class Permissions {
     public static final String RIGHTS_NO_ACCESS_VALUE = "No access (only for strictly confidential material)";
 
     public static void applyTo(final KULEvent event) throws Exception {
-        final List<ResourcePolicy> policies = new ArrayList<>();
+        List<ResourcePolicy> policies = null;
         switch (event.getConsumeCaseEnum()) {
             case REDEPOSIT:
             case DEPOSIT: {
+                policies = new ArrayList<>();
                 policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
                 if (!RIGHTS_NO_ACCESS_VALUE.equals(getRights(event))) {
                     policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
@@ -37,7 +38,7 @@ public class Permissions {
                 break;
             }
         }
-        if (policies != null && !policies.isEmpty()) {
+        if (policies != null) {
             if (event.getBitstream() != null) {
                 changeBitstreamPolicies(event, event.getBitstream(), policies);
             } else {
