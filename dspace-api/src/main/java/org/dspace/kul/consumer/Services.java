@@ -10,6 +10,8 @@ import org.dspace.content.service.ItemService;
 import org.dspace.eperson.factory.EPersonServiceFactory;
 import org.dspace.eperson.service.EPersonService;
 import org.dspace.eperson.service.GroupService;
+import org.dspace.services.factory.DSpaceServicesFactory;
+import org.dspace.services.ConfigurationService;
 
 public class Services {
 
@@ -21,5 +23,5 @@ public class Services {
     public ItemService itemService = ContentServiceFactory.getInstance().getItemService();
     public BundleService bundleService = ContentServiceFactory.getInstance().getBundleService();
     public BitstreamService bitstreamService = ContentServiceFactory.getInstance().getBitstreamService();
-
+    public ConfigurationService configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
 }
