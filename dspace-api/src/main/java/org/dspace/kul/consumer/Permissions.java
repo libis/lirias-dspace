@@ -6,21 +6,28 @@ import java.util.List;
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.ResourcePolicy;
 import org.dspace.content.Bitstream;
+import org.dspace.content.Item;
 import org.dspace.core.Constants;
 import org.dspace.eperson.Group;
 
 public class Permissions {
     private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(Permissions.class);
+    public static final String RIGHTS_PUBLIC_ACCESS_VALUE = "Public access (as soon as legally possible, verified by the OA Support Desk)";
+    public static final String RIGHTS_PERMANENT_EMBARGO_VALUE = "Permanent embargo (intranet only)";
+    public static final String RIGHTS_NO_ACCESS_VALUE = "No access (only for strictly confidential material)";
 
     public static void applyTo(final KULEvent event) throws Exception {
         final List<ResourcePolicy> policies = new ArrayList<>();
         switch (event.getConsumeCaseEnum()) {
             case REDEPOSIT:
-            case ADD_VIA_UI: {
+            case DEPOSIT: {
                 policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
+                if (!RIGHTS_NO_ACCESS_VALUE.equals(getRights(event))) {
+                    policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+                }
                 break;
             }
-            case DEPOSIT:
+            case ADD_VIA_UI:
             case REMOVE:
             case EDIT_PERMISSION: {
                 break;
@@ -54,5 +61,9 @@ public class Permissions {
         rp.setAction(Constants.READ);
         rp.setGroup(group);
         return rp;
+    }
+
+    private static String getRights(final KULEvent event) {
+        return event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "rights", "license", Item.ANY);
     }
 }
