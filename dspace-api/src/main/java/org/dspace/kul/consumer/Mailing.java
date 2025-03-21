@@ -5,6 +5,7 @@ import org.dspace.content.MetadataValue;
 import org.dspace.core.Email;
 import org.dspace.core.I18nUtil;
 
+import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
@@ -16,17 +17,18 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
 
 public class Mailing {
     private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(Mailing.class);
 
     private static final Services services = new Services();
-
-    private static final String senderEmail = "";
-    private static final String elementsCacheAPIUrl = "";
-    private static final String elementsCacheUsername = "";
-    private static final String elementsCachePassword = "";
+    private static final String dspaceUrl = services.configurationService.getProperty("dspace.url");
+    private static final String senderEmail = services.configurationService.getProperty("phd-emails.sender");
+    private static final String elementsCacheAPIUrl = services.configurationService.getProperty("elements-cache.url") + "/rest/";
+    private static final String elementsCacheUsername = services.configurationService.getProperty("elements-cache.username");
+    private static final String elementsCachePassword = services.configurationService.getProperty("elements-cache.password");
 
     public static void applyTo(final KULEvent event) throws Exception {
         // TODO
@@ -105,7 +107,7 @@ public class Mailing {
         Set<String> uNumbers = new HashSet<>();
         for (String contributorType : List.of("author", "supervisor", "cosupervisor")) {
             services.itemService.getMetadata(item, "dc", "contributor", contributorType, Item.ANY).stream()
-                    .map(m -> uNumbers.add(
+                    .forEach(m -> uNumbers.add(
                             getUnumberFromMetadata(m)));
         }
         Set<String> emails = new HashSet<>();
@@ -129,8 +131,9 @@ public class Mailing {
 
     private static String getEmailAdress(String uNumber) throws Exception {
         String result;
-        HttpGet request = new HttpGet(
-                elementsCacheAPIUrl + "email/user/" + uNumber);
+        String requestUrl = elementsCacheAPIUrl + "email/user/" + uNumber;
+        System.out.println(requestUrl);
+        HttpGet request = new HttpGet(requestUrl);
         CredentialsProvider provider = new BasicCredentialsProvider();
         provider.setCredentials(AuthScope.ANY,
                 new UsernamePasswordCredentials(elementsCacheUsername, elementsCachePassword));
@@ -138,7 +141,7 @@ public class Mailing {
                 .setDefaultCredentialsProvider(provider)
                 .build();
 
-        String responseText = httpClient.execute(request).toString();
+        String responseText = EntityUtils.toString(httpClient.execute(request).getEntity());
         result = responseText.replaceAll("<[^>]*>", "");
         return result;
     }
