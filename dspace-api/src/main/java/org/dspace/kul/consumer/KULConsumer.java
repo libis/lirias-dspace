@@ -129,7 +129,7 @@ public class KULConsumer implements Consumer {
                     break;
             }
             if (caseEnum != null) {
-                final boolean phd = isPhd();
+                final boolean phd = isPhd(item);
                 final KULEvent e = new KULEvent(ctx, bitstream, item, bitstreams, groupsMap, caseEnum, phd, services);
                 Permissions.applyTo(e);
                 Provenance.applyTo(e);
@@ -139,8 +139,11 @@ public class KULConsumer implements Consumer {
         queue.clear();
     }
 
-    private boolean isPhd() {
-        // TODO
+    private boolean isPhd(Item item) {
+        if (services.itemService.getMetadata(item, "dc", "type", "elements", Item.ANY).stream()
+                .anyMatch(m -> m.getValue().equals("thesis-dissertation"))) {
+            return true;
+        }
         return false;
     }
 }
