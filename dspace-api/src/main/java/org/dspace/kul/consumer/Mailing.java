@@ -103,6 +103,10 @@ public class Mailing {
         }
     }
 
+    private String getItemUrl(Item item) {
+        return  MessageFormat.format("{0}/handle/{1}", dspaceUrl, item.getHandle());
+    }
+
     private static Set<String> getContributorEmails(Item item) throws Exception {
         Set<String> uNumbers = new HashSet<>();
         for (String contributorType : List.of("author", "supervisor", "cosupervisor")) {
