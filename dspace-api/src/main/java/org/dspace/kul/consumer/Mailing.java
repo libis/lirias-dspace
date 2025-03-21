@@ -136,7 +136,6 @@ public class Mailing {
     private static String getEmailAdress(String uNumber) throws Exception {
         String result;
         String requestUrl = elementsCacheAPIUrl + "email/user/" + uNumber;
-        System.out.println(requestUrl);
         HttpGet request = new HttpGet(requestUrl);
         CredentialsProvider provider = new BasicCredentialsProvider();
         provider.setCredentials(AuthScope.ANY,
