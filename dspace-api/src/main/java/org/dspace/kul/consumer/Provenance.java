@@ -111,7 +111,7 @@ public class Provenance {
                     b.getID().toString(),
                     b.getSizeBytes());
 
-            if (b != null && b.getID() == b.getID()) {
+            if (b != null && b.getID() == event.getBitstream().getID()) {
                 message += MessageFormat.format("bytes, checksum: {0} ({1})",
                         b.getChecksum(),
                         b.getChecksumAlgorithm());
@@ -147,7 +147,7 @@ public class Provenance {
                     b.getName(),
                     b.getID().toString(),
                     b.getSizeBytes());
-            if (b != null && b.getID() == b.getID()) {
+            if (b != null && b.getID() == event.getBitstream().getID()) {
                 message += MessageFormat.format("bytes, checksum: {0} ({1})",
                         b.getChecksum(),
                         b.getChecksumAlgorithm());
