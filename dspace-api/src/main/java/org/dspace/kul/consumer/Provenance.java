@@ -277,7 +277,7 @@ public class Provenance {
                     && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
                 final String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
                 if (temp.length == 2) {
-                    final Date previousPermissionDate = (new SimpleDateFormat()).parse(temp[0]);
+                    final Date previousPermissionDate = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy").parse(temp[0]);
                     final String previousPermission = temp[1];
                     if (currentPermissionDate == null || previousPermissionDate.after(currentPermissionDate)) {
                         currentPermissionDate = previousPermissionDate;
