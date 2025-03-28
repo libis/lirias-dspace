@@ -6,12 +6,17 @@ import org.dspace.content.Item;
 import org.dspace.content.MetadataValue;
 import org.dspace.core.Email;
 import org.dspace.core.I18nUtil;
+import org.dspace.core.Constants;
+import java.util.Deque;
+import java.util.ArrayDeque;
 
-import java.sql.SQLException;
 import java.text.MessageFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
+import java.util.Date;
 
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -46,11 +51,19 @@ public class Mailing {
                     if (emailRecipients.isEmpty()) {
                         return;
                     }
-
                     Email email = Email
                             .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "redeposit"));
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
+                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
+                                    "author", Item.ANY));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                    null, Item.ANY));
+                    email.addArgument(getItemPermission(event)); 
+                    email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
                     email.send();
                     break;
                 }
@@ -60,13 +73,28 @@ public class Mailing {
                     if (emailRecipients.isEmpty()) {
                         return;
                     }
-
-                    Email email = Email.getEmail(
-                            I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui"));
+                    Email email = Email
+                            .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(),
+                                    "add_bitstream_via_ui"));
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
-                    email.send();
+                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
+                                    "author", Item.ANY));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                    null, Item.ANY));
 
+                    Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
+                    if (permissionHistory.size()>0) {
+                        email.addArgument(permissionHistory.pop());
+                    } else {
+                        email.addArgument(null);
+                    }
+                    // write expand function
+                    email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
+                    email.send();
                     break;
                 }
                 case DEPOSIT: {
@@ -79,21 +107,32 @@ public class Mailing {
                             .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "deposit"));
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
-
+                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
+                                    "author", Item.ANY));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                    null, Item.ANY));
+                    email.addArgument(getItemPermission(event)); // item
+                    email.addArgument(getGroupStartDate(event, event.getBitstreams().get(0), "anonymous"));
                     email.send();
                     break;
                 }
                 case REMOVE: {
                     Set<String> emailRecipients = getContributorEmails(event.getItem(),
                             List.of("author", "supervisor", "cosupervisor"));
-                    if (emailRecipients.isEmpty()) {
-                        return;
-                    }
-
                     Email email = Email
                             .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "remove_bitstream"));
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
+                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
+                                    "author", Item.ANY));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                    null, Item.ANY));
                     email.send();
                     break;
                 }
@@ -103,11 +142,28 @@ public class Mailing {
                     if (emailRecipients.isEmpty()) {
                         return;
                     }
-
                     Email email = Email.getEmail(
                             I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "edit_bitstream_permission"));
-                    emailRecipients.forEach(r -> email.addRecipient(r));
-                    email.setReplyTo(senderEmail);
+                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
+                                    "author", Item.ANY));
+                    email.addArgument(
+                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                    null, Item.ANY));
+                    Deque<String>  permissionHistory = getPreviousBitstreamPermissionText(event);
+                    if (permissionHistory.size()>0) {
+                        email.addArgument(permissionHistory.pop());
+                    } else {
+                        email.addArgument(null);
+                    }
+                    if (permissionHistory.size()>1) {
+                        email.addArgument(permissionHistory.pop());
+                    } else {
+                        email.addArgument(null);
+                    }
+                    // write expand function
+                    email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
                     email.send();
                     break;
                 }
@@ -135,7 +191,7 @@ public class Mailing {
         }
     }
 
-    private String getItemUrl(Item item) {
+    private static String getItemUrl(Item item) {
         return MessageFormat.format("{0}/handle/{1}", dspaceUrl, item.getHandle());
     }
 
@@ -178,6 +234,64 @@ public class Mailing {
 
         String responseText = EntityUtils.toString(httpClient.execute(request).getEntity());
         result = responseText.replaceAll("<[^>]*>", "");
+        return result;
+    }
+
+    private static String getGroupStartDate(KULEvent event, Bitstream bitstream, String groupName) throws Exception {
+        String result = "Not Applicable";
+        List<ResourcePolicy> resourcePolicyList = services.authorizeService.getPoliciesActionFilter(event.getCtx(),
+                bitstream, Constants.READ);
+        for (ResourcePolicy resourcePolicy : resourcePolicyList) {
+            if (resourcePolicy.getGroup() != null && resourcePolicy.getGroup().getName().equalsIgnoreCase(groupName)) {
+                Date startDate = resourcePolicy.getStartDate();
+                if (startDate != null) {
+                    result = startDate.toString();
+                }
+            }
+        }
+        return result;
+    }
+
+    private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event)
+            throws ParseException {
+        Deque<String> permissions = new ArrayDeque<String>();
+        for (final MetadataValue bitstreamMetadata : event.getBitstream().getMetadata()) {
+            if (bitstreamMetadata.getMetadataField().getElement().equals("bitstream")
+                    && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
+                final String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
+                if (temp.length == 2) {
+                    final Date previousPermissionDate = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy").parse(temp[0]);
+                    final String previousPermission = temp[1];
+                    if (previousPermissionDate != null) {
+                        permissions.push(previousPermission);
+                    }
+                    // TODO: order by date
+                    // TODO: refactor (similar function in Provenance.java)
+                }
+            }
+        }
+        return permissions;
+    }
+
+    private static String getItemPermission(KULEvent event) throws Exception {
+        String result = "Private (repository admins only)";
+        String itemLicense = event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "rights", "license", Item.ANY);
+        String bitstreamPermission = null;
+        Deque<String> bitstreamPermissions = getPreviousBitstreamPermissionText(event);
+        if (bitstreamPermissions.size()>0) {
+            bitstreamPermission = bitstreamPermissions.pop();
+        }
+        if (itemLicense == null || itemLicense.isBlank()) {
+            result = "Public";
+        } else if (itemLicense != null && itemLicense.equalsIgnoreCase("KU Leuven sets the embargo")) {
+            result ="Unknown Embargo";
+        } else if (bitstreamPermission != null && bitstreamPermission.equalsIgnoreCase("embargo") && itemLicense.equalsIgnoreCase("Public access (as soon as legally possible, verified by the OA Support Desk)")) {
+            result = "Public (after an embargo of 12 months)";
+        } else if (bitstreamPermission != null && bitstreamPermission.equalsIgnoreCase("public") && itemLicense.equalsIgnoreCase("Public access (as soon as legally possible, verified by the OA Support Desk)")) {
+            result ="Public";
+        } else if ( bitstreamPermission != null && bitstreamPermission.equalsIgnoreCase("intranet") && itemLicense.equalsIgnoreCase("Permanent embargo (intranet only)")) {
+            result = "Permanent embargo (intranet only)";
+        }
         return result;
     }
 
