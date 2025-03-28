@@ -144,6 +144,9 @@ public class Mailing {
                     }
                     Email email = Email.getEmail(
                             I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "edit_bitstream_permission"));
+                    emailRecipients.forEach(r -> email.addRecipient(r));
+                    email.setReplyTo(senderEmail);
+        
                     email.addArgument(getItemUrl(event.getItem()));
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
@@ -157,7 +160,7 @@ public class Mailing {
                     } else {
                         email.addArgument(null);
                     }
-                    if (permissionHistory.size()>1) {
+                    if (permissionHistory.size()>0) {
                         email.addArgument(permissionHistory.pop());
                     } else {
                         email.addArgument(null);
