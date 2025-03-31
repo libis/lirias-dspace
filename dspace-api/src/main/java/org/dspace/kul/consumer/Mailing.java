@@ -93,7 +93,6 @@ public class Mailing {
                     } else {
                         email.addArgument(null);
                     }
-                    // write expand function
                     email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
                     email.send();
                     break;
@@ -115,7 +114,7 @@ public class Mailing {
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
                                     null, Item.ANY));
-                    email.addArgument(getItemPermission(event)); // item
+                    email.addArgument(getItemPermission(event)); 
                     email.addArgument(getGroupStartDate(event, event.getBitstreams().get(0), "anonymous"));
                     email.send();
                     break;
