@@ -88,7 +88,8 @@ public class Mailing {
 
                     Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
                     if (permissionHistory.size()>0) {
-                        email.addArgument(permissionHistory.pop());
+                        String permission = permissionHistory.pop();
+                        email.addArgument(expandPermissionString(permission));
                     } else {
                         email.addArgument(null);
                     }
@@ -156,16 +157,17 @@ public class Mailing {
                                     null, Item.ANY));
                     Deque<String>  permissionHistory = getPreviousBitstreamPermissionText(event);
                     if (permissionHistory.size()>0) {
-                        email.addArgument(permissionHistory.pop());
+                        final String previousPermission = permissionHistory.pop();
+                        email.addArgument(expandPermissionString(previousPermission));
                     } else {
                         email.addArgument(null);
                     }
                     if (permissionHistory.size()>0) {
-                        email.addArgument(permissionHistory.pop());
+                        final String currentPermission = permissionHistory.pop();
+                        email.addArgument(expandPermissionString(currentPermission));
                     } else {
                         email.addArgument(null);
                     }
-                    // write expand function
                     email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
                     email.send();
                     break;
@@ -254,6 +256,20 @@ public class Mailing {
         }
         return result;
     }
+
+    private static String expandPermissionString(String permission) {
+        switch (permission.toLowerCase()) {
+            case "embargo":
+                return "Public (after an embargo of 12 months)";
+            case "public":
+                return "Public";
+            case "intranet":
+                return "Permanent embargo (intranet only)";
+            default:
+                return "Private (repository admins only)";
+        }
+    }
+
 
     private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event)
             throws ParseException {
