@@ -688,4 +688,162 @@ public class Email {
             return configurationService.getProperty(key);
         }
     }
+
+    /**
+     * Sends the email as HTML. 
+     * 
+     * This method is based on the send() method above, modified to set email subtype as "html" when calling setText.
+     * if (charset != null) check is also removed in order to use the subtype parameter. 
+     * Everything else is the same as send(). 
+     * 
+     * If the template defines a Velocity context property
+     * named among the values of DSpace configuration property
+     * {@code mail.message.headers} then that name and its value will be added
+     * to the message's headers.
+     *
+     * <p>"subject" is treated specially:  if {@link setSubject()} has not been
+     * called, the value of any "subject" property will be used as if setSubject
+     * had been called with that value.  Thus a template may define its subject,
+     * but the caller may override it.
+     *
+     * @throws MessagingException if there was a problem sending the mail.
+     * @throws IOException        if IO error
+     */
+    public void sendHTML() throws MessagingException, IOException {
+        if (null == template) {
+            // No template -- no content -- PANIC!!!
+            throw new MessagingException("Email has no body");
+        }
+
+        ConfigurationService config
+                = DSpaceServicesFactory.getInstance().getConfigurationService();
+
+        // Get the mail configuration properties
+        String from = config.getProperty("mail.from.address");
+        boolean disabled = config.getBooleanProperty("mail.server.disabled", false);
+
+        // If no character set specified, attempt to retrieve a default
+        if (charset == null) {
+            charset = config.getProperty("mail.charset");
+        }
+
+        // Get session
+        Session session = DSpaceServicesFactory.getInstance().getEmailService().getSession();
+
+        // Create message
+        MimeMessage message = new MimeMessage(session);
+
+        // Set the recipients of the message
+        for (String recipient : recipients) {
+            message.addRecipient(Message.RecipientType.TO,
+                    new InternetAddress(recipient));
+        }
+        // Get headers defined by the template.
+        String[] templateHeaders = config.getArrayProperty("mail.message.headers");
+
+        // Format the mail message body
+        VelocityContext vctx = new VelocityContext();
+        vctx.put("config", new UnmodifiableConfigurationService(config));
+        vctx.put("params", Collections.unmodifiableList(arguments));
+
+        StringWriter writer = new StringWriter();
+        try {
+            template.merge(vctx, writer);
+        } catch (MethodInvocationException | ParseErrorException
+                | ResourceNotFoundException ex) {
+            LOG.error("Template not merged:  {}", ex.getMessage());
+            throw new MessagingException("Template not merged", ex);
+        }
+        String fullMessage = writer.toString();
+
+        // Set some message header fields
+        Date date = new Date();
+        message.setSentDate(date);
+        message.setFrom(new InternetAddress(from));
+
+        for (String headerName : templateHeaders) {
+            String headerValue = (String) vctx.get(headerName);
+            if ("subject".equalsIgnoreCase(headerName)) {
+                if (null != headerValue) {
+                    subject = headerValue;
+                }
+            } else if ("charset".equalsIgnoreCase(headerName)) {
+                charset = headerValue;
+            } else {
+                message.setHeader(headerName, headerValue);
+            }
+        }
+
+        // Set the subject of the email.
+        if (charset != null) {
+            message.setSubject(subject, charset);
+        } else {
+            message.setSubject(subject);
+        }
+
+        // Add attachments
+        if (attachments.isEmpty() && moreAttachments.isEmpty()) {
+            message.setText(fullMessage, charset, "html"); // assumes there is a charset 
+        } else {
+            Multipart multipart = new MimeMultipart();
+
+            // create the first part of the email
+            BodyPart messageBodyPart = new MimeBodyPart();
+            messageBodyPart.setText(fullMessage);
+            multipart.addBodyPart(messageBodyPart);
+
+            // Add file attachments
+            for (FileAttachment attachment : attachments) {
+                // add the file
+                messageBodyPart = new MimeBodyPart();
+                messageBodyPart.setDataHandler(new DataHandler(
+                        new FileDataSource(attachment.file)));
+                messageBodyPart.setFileName(attachment.name);
+                multipart.addBodyPart(messageBodyPart);
+            }
+
+            // Add stream attachments
+            for (InputStreamAttachment attachment : moreAttachments) {
+                // add the stream
+                messageBodyPart = new MimeBodyPart();
+                messageBodyPart.setDataHandler(new DataHandler(
+                        new InputStreamDataSource(attachment.name,
+                                attachment.mimetype, attachment.is)));
+                messageBodyPart.setFileName(attachment.name);
+                multipart.addBodyPart(messageBodyPart);
+            }
+
+            message.setContent(multipart);
+        }
+
+        if (replyTo != null) {
+            Address[] replyToAddr = new Address[1];
+            replyToAddr[0] = new InternetAddress(replyTo);
+            message.setReplyTo(replyToAddr);
+        }
+
+        if (disabled) {
+            StringBuilder text = new StringBuilder(
+                "Message not sent due to mail.server.disabled:\n");
+
+            Enumeration<String> headers = message.getAllHeaderLines();
+            while (headers.hasMoreElements()) {
+                text.append(headers.nextElement()).append('\n');
+            }
+
+            if (!attachments.isEmpty()) {
+                text.append("\nAttachments:\n");
+                for (FileAttachment f : attachments) {
+                    text.append(f.name).append('\n');
+                }
+                text.append('\n');
+            }
+
+            text.append('\n').append(fullMessage);
+
+            LOG.info(text.toString());
+        } else {
+            Transport.send(message);
+        }
+    }
 }
