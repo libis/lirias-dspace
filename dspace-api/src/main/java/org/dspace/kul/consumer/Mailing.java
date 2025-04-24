@@ -8,7 +8,9 @@ import org.dspace.core.Email;
 import org.dspace.core.I18nUtil;
 import org.dspace.core.Constants;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.text.MessageFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -86,7 +88,7 @@ public class Mailing {
                         return;
                     }
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui");
-                    
+
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -146,7 +148,7 @@ public class Mailing {
                         System.out.println("No email sender set.");
                         return;
                     }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(),  "remove_bitstream");
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "remove_bitstream");
 
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
@@ -207,23 +209,68 @@ public class Mailing {
                 }
 
             }
-        } else {
-            switch (event.getConsumeCaseEnum()) {
-                case REDEPOSIT:
-                case ADD_VIA_UI:
-                case DEPOSIT:
-                case REMOVE:
-                case EDIT_PERMISSION: {
+        }
+        switch (event.getConsumeCaseEnum()) {
+            case REDEPOSIT: {
+                System.out.println("OA emails: Redeposit case");
+                final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
+                if (senderEmail == null) {
+                    System.out.println("No email sender set.");
+                    return;
+                }
+                Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit_oa");
+                if (email == null) {
                     break;
                 }
-                default: {
-                    log.error("default mailing for this event not implemented: " + event.getConsumeCaseEnum().name());
+                email.addRecipient(senderEmail);
+                email.setReplyTo(senderEmail);
+                email.sendHTML();
+                break;
+            }
+            case ADD_VIA_UI: {
+                System.out.println("OA emails: Add from UI case");
+                final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
+                if (senderEmail == null) {
+                    System.out.println("No email sender set.");
+                    return;
+                }
+                Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui_oa");
+                if (email == null) {
                     break;
                 }
+                email.addRecipient(senderEmail);
+                email.setReplyTo(senderEmail);
+                email.sendHTML();
+                break;
+            }
+            case DEPOSIT: {
+                System.out.println("OA emails: Deposit case");
+                final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
+                if (senderEmail == null) {
+                    System.out.println("No email sender set.");
+                    return;
+                }
+                Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit_oa");
+                if (email == null) {
+                    break;
+                }
+                email.addRecipient(senderEmail);
+                email.setReplyTo(senderEmail);
+                email.sendHTML();
+                break;
+            }
+            case REMOVE: {
+                break;
+            }
+            case EDIT_PERMISSION: {
+                break;
+            }
+            default: {
+                log.error("default mailing for this event not implemented: " + event.getConsumeCaseEnum().name());
+                break;
             }
         }
     }
-
 
     private static Email readEmailTemplate(Locale locale, String filename) throws Exception {
         Email email;
@@ -233,11 +280,10 @@ public class Mailing {
         } catch (Exception e) {
             log.error(MessageFormat.format("Error loading email template: {0}", filename));
             log.error(e);
-            email = null; 
+            email = null;
         }
         return email;
     }
-
 
     private static String getItemDspaceUrl(Item item) {
         return MessageFormat.format("{0}/handle/{1}", dspaceUrl, item.getHandle());
@@ -245,6 +291,32 @@ public class Mailing {
 
     private static String getItemLimoUrl(Item item) {
         return MessageFormat.format("{0}/handle/{1}", limoUrl, item.getHandle());
+    }
+
+    private static ArrayList<String> getFormattedContributorInfo(Item item, String contributorType) throws Exception {
+        HashMap<String, String> contributors = getContributorEmails(item, contributorType);
+        ArrayList<String> result = new ArrayList<String>();
+        for (String contributor : contributors.keySet()) {
+            result.add(MessageFormat.format("{0} ({1})", contributor, contributors.get(contributor)));
+        }
+        return result;
+    }
+
+    private static HashMap<String, String> getContributorEmails(Item item, String contributorType) throws Exception {
+        HashMap<String, String> result = new HashMap<String, String>();
+        services.itemService.getMetadata(item, "dc", "contributor", contributorType, Item.ANY).stream().forEach(
+                m -> {
+                    final String uNumber = getUnumberFromMetadata(m);
+                    String emailAddress = "";
+                    try {
+                        emailAddress = getEmailAdress(uNumber);
+                    } catch (Exception e) {
+                        System.out.println("Could not retrieve email address for " + uNumber + ": " + e.toString());
+
+                    }
+                    result.put(m.getValue().toString(), emailAddress);
+                });
+        return result;
     }
 
     private static Set<String> getContributorEmails(Item item, List<String> contributorTypes) throws Exception {
@@ -312,6 +384,88 @@ public class Mailing {
             return null;
         }
         result = responseText.replaceAll("<[^>]*>", "");
+        return result;
+    }
+
+    private static String getItemMetadataOrEmptyString(Item item, String schema, String element, String qualifier,
+            String language) {
+        String metadata = services.itemService.getMetadataFirstValue(item, schema, element, qualifier, Item.ANY);
+        if (metadata == null) {
+            metadata = "";
+        }
+        return metadata;
+
+    }
+
+    private static String getBitstreamMetadataOrEmptyString(Bitstream bs, String schema, String element,
+            String qualifier,
+            String language) {
+        String metadata = services.bitstreamService.getMetadataFirstValue(bs, schema, element, qualifier, Item.ANY);
+        if (metadata == null) {
+            metadata = "";
+        }
+        return metadata;
+
+    }
+
+    private static final HashMap<String, String> getItemMetadataMap(KULEvent event) throws Exception {
+        HashMap result = new HashMap<String, String>();
+        final Item item = event.getItem();
+        final Bitstream bitstream = event.getBitstream();
+
+        final String comment = getItemMetadataOrEmptyString(item, "dc", "deposit", "comment", Item.ANY);
+        result.put("Comment", comment);
+        String[] splitComment = comment.split("---");
+        for (String commentPart : splitComment) {
+            if (commentPart.startsWith("LICENCE:")) {
+                result.put("Item Access License", commentPart.replace("LICENCE:", "").strip());
+            }
+            if (commentPart.startsWith("PUBLISHER LICENCE:")) {
+                result.put("Item Publisher License", commentPart.replace("PUBLISHER LICENCE:", "").strip());
+            }
+            if (commentPart.startsWith("FIRST DEPOSITOR:")) {
+                result.put("First Depositor", commentPart.replace("FIRST DEPOSITOR:", "").strip());
+            }
+        }
+        final String accessLicense = getItemMetadataOrEmptyString(item, "dc", "rights", "license", Item.ANY);
+        if (result.get("Item Access License") == null && accessLicense != null) {
+            result.put("Item Access License", accessLicense);
+        } // Use dc.rights.license if LICENCE not found in comment
+
+        result.put("Bitstream License",
+                getBitstreamMetadataOrEmptyString(bitstream, "dc", "rights", "license", Item.ANY));
+        result.put("Bitstream Version",
+                getBitstreamMetadataOrEmptyString(bitstream, "dc", "description", null, Item.ANY));
+        result.put("Item Description", getItemMetadataOrEmptyString(item, "dc", "description", null, Item.ANY));
+        result.put("Date Issued", getItemMetadataOrEmptyString(item, "dc", "date", "issued", Item.ANY));
+        result.put("Type", getItemMetadataOrEmptyString(item, "dc", "type", "elements",
+                Item.ANY));
+        result.put("Item Status", getItemMetadataOrEmptyString(item, "dc", "status", null, Item.ANY));
+        result.put("Naam Tijdschrift", getItemMetadataOrEmptyString(item, "dc", "relation", "ispartofseries",
+                Item.ANY));
+        result.put("Naam Uitgever", getItemMetadataOrEmptyString(item, "dc", "publisher", null, Item.ANY));
+        result.put("DOI", getItemMetadataOrEmptyString(item, "dc", "identifier", "doi", Item.ANY));
+        result.put("Title", getItemMetadataOrEmptyString(item, "dc", "title", null, Item.ANY));
+        result.put("Limo URL", getItemLimoUrl(item));
+        result.put("DSpace URL", getItemDspaceUrl(item));
+        result.put("Author", getFormattedContributorInfo(item, "author"));
+        result.put("Supervisor", getFormattedContributorInfo(item, "supervisor"));
+        result.put("Cosupervisor", getFormattedContributorInfo(item, "cosupervisor"));
+        result.put("Bitstream File Format",
+                getBitstreamMetadataOrEmptyString(bitstream, "dc", "format", null, Item.ANY));
+        result.put("Bitstream File Extension", getFileExtension(bitstream.getName()));
+
+        return result;
+    }
+
+    private static String getFileExtension(String fileName) {
+        final String result;
+        String[] splitFilename = fileName.split("\\.");
+        if (splitFilename != null && splitFilename.length > 1) {
+            result = splitFilename[splitFilename.length - 1];
+        } else {
+            result = "";
+        }
         return result;
     }
 
