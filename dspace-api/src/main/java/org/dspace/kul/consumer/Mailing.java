@@ -61,7 +61,9 @@ public class Mailing {
                         return;
                     }
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit");
-
+                    if (email == null) {
+                        break;
+                    }    
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -88,7 +90,9 @@ public class Mailing {
                         return;
                     }
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui");
-
+                    if (email == null) {
+                        break;
+                    }    
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -122,7 +126,9 @@ public class Mailing {
                         return;
                     }
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit");
-
+                    if (email == null) {
+                        break;
+                    }    
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -149,7 +155,9 @@ public class Mailing {
                         return;
                     }
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "remove_bitstream");
-
+                    if (email == null) {
+                        break;
+                    }    
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
@@ -175,7 +183,9 @@ public class Mailing {
                         return;
                     }
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "edit_bitstream_permission");
-
+                    if (email == null) {
+                        break;
+                    }    
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
@@ -275,8 +285,7 @@ public class Mailing {
     private static Email readEmailTemplate(Locale locale, String filename) throws Exception {
         Email email;
         try {
-            email = Email
-                    .getEmail(I18nUtil.getEmailFilename(locale, filename));
+            email = Email.getEmail(I18nUtil.getEmailFilename(locale, filename));
         } catch (Exception e) {
             log.error(MessageFormat.format("Error loading email template: {0}", filename));
             log.error(e);
