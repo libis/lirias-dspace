@@ -74,7 +74,7 @@ public class Mailing {
                                     null, Item.ANY));
                     email.addArgument(getItemPermission(event));
                     email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
-                    email.send();
+                    email.sendHTML();
                     break;
                 }
                 case ADD_VIA_UI: {
@@ -113,7 +113,7 @@ public class Mailing {
                         email.addArgument(null);
                     }
                     email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
-                    email.send();
+                    email.sendHTML();
                     break;
                 }
                 case DEPOSIT: {
@@ -146,7 +146,7 @@ public class Mailing {
                                     null, Item.ANY));
                     email.addArgument(getItemPermission(event));
                     email.addArgument(getGroupStartDate(event, event.getBitstreams().get(0), "anonymous"));
-                    email.send();
+                    email.sendHTML();
                     break;
                 }
                 case REMOVE: {
@@ -176,7 +176,7 @@ public class Mailing {
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
                                     null, Item.ANY));
-                    email.send();
+                    email.sendHTML();
                     break;
                 }
                 case EDIT_PERMISSION: {
@@ -220,7 +220,7 @@ public class Mailing {
                         email.addArgument(null);
                     }
                     email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
-                    email.send();
+                    email.sendHTML();
                     break;
                 }
                 default: {
@@ -229,7 +229,6 @@ public class Mailing {
                 }
 
             }
-
         } else {
             switch (event.getConsumeCaseEnum()) {
                 case REDEPOSIT:
@@ -351,7 +350,6 @@ public class Mailing {
                 return "Private (repository admins only)";
         }
     }
-
 
     private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event)
             throws ParseException {
