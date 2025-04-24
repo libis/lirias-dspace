@@ -63,7 +63,7 @@ public class Mailing {
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit");
                     if (email == null) {
                         break;
-                    }    
+                    }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -92,7 +92,7 @@ public class Mailing {
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui");
                     if (email == null) {
                         break;
-                    }    
+                    }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -128,7 +128,7 @@ public class Mailing {
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit");
                     if (email == null) {
                         break;
-                    }    
+                    }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -157,7 +157,7 @@ public class Mailing {
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "remove_bitstream");
                     if (email == null) {
                         break;
-                    }    
+                    }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
@@ -185,7 +185,7 @@ public class Mailing {
                     Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "edit_bitstream_permission");
                     if (email == null) {
                         break;
-                    }    
+                    }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
@@ -234,6 +234,20 @@ public class Mailing {
                 }
                 email.addRecipient(senderEmail);
                 email.setReplyTo(senderEmail);
+                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor" };
+                String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
+                        "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
+                String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+                String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
+                String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
+                        "{border: 1px;}");
+                email.addArgument(itemMetadata.get("Limo URL"));
+                email.addArgument(itemMetadata.get("DSpace URL"));
+                email.addArgument(itemMetadata.get("Title"));
+                email.addArgument(basicMetadata);
+                email.addArgument(metadataForOA);
+                email.addArgument(logbookTable);
                 email.sendHTML();
                 break;
             }
@@ -250,6 +264,20 @@ public class Mailing {
                 }
                 email.addRecipient(senderEmail);
                 email.setReplyTo(senderEmail);
+                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor" };
+                String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
+                        "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
+                String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+                String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
+                String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
+                        "{border: 1px;}");
+                email.addArgument(itemMetadata.get("Limo URL"));
+                email.addArgument(itemMetadata.get("DSpace URL"));
+                email.addArgument(itemMetadata.get("Title"));
+                email.addArgument(basicMetadata);
+                email.addArgument(metadataForOA);
+                email.addArgument(logbookTable);
                 email.sendHTML();
                 break;
             }
@@ -266,6 +294,20 @@ public class Mailing {
                 }
                 email.addRecipient(senderEmail);
                 email.setReplyTo(senderEmail);
+                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor" };
+                String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
+                        "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
+                String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+                String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
+                String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
+                        "{border: 1px;}");
+                email.addArgument(itemMetadata.get("Limo URL"));
+                email.addArgument(itemMetadata.get("DSpace URL"));
+                email.addArgument(itemMetadata.get("Title"));
+                email.addArgument(basicMetadata);
+                email.addArgument(metadataForOA);
+                email.addArgument(logbookTable);
                 email.sendHTML();
                 break;
             }
@@ -414,6 +456,54 @@ public class Mailing {
             metadata = "";
         }
         return metadata;
+
+    }
+
+    private static String formatMetadataAsTable(HashMap<String, String> itemMetadata, String[] fieldsToUse,
+            boolean vertical, String border) {
+        String result = "";
+        if (!border.isBlank()) {
+            result += MessageFormat.format("<table border=\"{0}\"}>", border);
+        } else {
+            result += "<table>";
+        }
+        if (vertical == true) {
+            for (String fieldName : fieldsToUse) {
+                result += "<tr>";
+                for (int colnum = 0; colnum < 2; colnum++) {
+                    if (colnum == 0) {
+                        result += MessageFormat.format("<td><b>{0}</b></td>\n", fieldName);
+                    } else {
+                        if (itemMetadata.containsKey(fieldName)) {
+                            result += MessageFormat.format("<td>{0}</td>\n", itemMetadata.get(fieldName));
+                        } else {
+                            result += "<td> </td>\n";
+                        }
+                    }
+                }
+                result += "</tr>\n";
+            }
+
+        } else {
+            for (int rowNum = 0; rowNum < 2; rowNum++) {
+                result += "<tr>";
+                for (String fieldName : fieldsToUse) {
+                    if (rowNum == 0) {
+                        result += MessageFormat.format("<th>{0}</th>\n", fieldName);
+                    } else {
+                        if (itemMetadata.containsKey(fieldName)) {
+                            result += MessageFormat.format("<td>{0}</td>\n", itemMetadata.get(fieldName));
+                        } else {
+                            result += "<td> </td>\n";
+                        }
+                    }
+                }
+                result += "</tr>\n";
+            }
+            result += "<tr>\n";
+        }
+        result += "</table>";
+        return result;
 
     }
 
