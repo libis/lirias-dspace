@@ -34,6 +34,7 @@ public class Mailing {
 
     private static final Services services = new Services();
     private static final String dspaceUrl = services.configurationService.getProperty("dspace.url");
+    private static final String limoUrl = services.configurationService.getProperty("limo.url");
     private static final String senderEmail = services.configurationService.getProperty("phd-emails.sender");
     private static final String elementsCacheAPIUrl = services.configurationService.getProperty("elements-cache.url")
             + "/rest/";
@@ -64,7 +65,7 @@ public class Mailing {
                     }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
-                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(getItemDspaceUrl(event.getItem()));
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
                                     "author", Item.ANY));
@@ -96,7 +97,7 @@ public class Mailing {
                     }
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
-                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(getItemDspaceUrl(event.getItem()));
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
                                     "author", Item.ANY));
@@ -136,7 +137,7 @@ public class Mailing {
 
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
-                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(getItemDspaceUrl(event.getItem()));
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
                                     "author", Item.ANY));
@@ -168,7 +169,7 @@ public class Mailing {
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
-                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(getItemDspaceUrl(event.getItem()));
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
                                     "author", Item.ANY));
@@ -198,7 +199,7 @@ public class Mailing {
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
-                    email.addArgument(getItemUrl(event.getItem()));
+                    email.addArgument(getItemDspaceUrl(event.getItem()));
                     email.addArgument(
                             event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
                                     "author", Item.ANY));
@@ -246,8 +247,13 @@ public class Mailing {
         }
     }
 
-    private static String getItemUrl(Item item) {
+
+    private static String getItemDspaceUrl(Item item) {
         return MessageFormat.format("{0}/handle/{1}", dspaceUrl, item.getHandle());
+    }
+
+    private static String getItemLimoUrl(Item item) {
+        return MessageFormat.format("{0}/handle/{1}", limoUrl, item.getHandle());
     }
 
     private static Set<String> getContributorEmails(Item item, List<String> contributorTypes) throws Exception {
