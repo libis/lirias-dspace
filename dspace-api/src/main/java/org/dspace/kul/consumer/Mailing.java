@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
 import java.util.Date;
+import java.util.Locale;
 
 import org.apache.http.StatusLine;
 import org.apache.http.auth.AuthScope;
@@ -57,12 +58,8 @@ public class Mailing {
                         System.out.println("No email sender set.");
                         return;
                     }
-                    Email email = Email
-                            .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "redeposit"));
-                    if (email == null) {
-                        System.out.println("Email template not found: redeposit");
-                        return;
-                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit");
+
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -88,13 +85,8 @@ public class Mailing {
                         System.out.println("No email sender set.");
                         return;
                     }
-                    Email email = Email
-                            .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(),
-                                    "add_bitstream_via_ui"));
-                    if (email == null) {
-                        System.out.println("Email template not found: add_bitstream_via_ui");
-                        return;
-                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui");
+                    
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
                     email.addArgument(getItemDspaceUrl(event.getItem()));
@@ -127,13 +119,7 @@ public class Mailing {
                         System.out.println("No email sender set.");
                         return;
                     }
-                    Email email = Email
-                            .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "deposit"));
-
-                    if (email == null) {
-                        System.out.println("Email template not found: deposit");
-                        return;
-                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit");
 
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
@@ -160,12 +146,8 @@ public class Mailing {
                         System.out.println("No email sender set.");
                         return;
                     }
-                    Email email = Email
-                            .getEmail(I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "remove_bitstream"));
-                    if (email == null) {
-                        System.out.println("Email template not found: remove_bitstream");
-                        return;
-                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(),  "remove_bitstream");
+
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
@@ -190,12 +172,8 @@ public class Mailing {
                         System.out.println("No email sender set.");
                         return;
                     }
-                    Email email = Email.getEmail(
-                            I18nUtil.getEmailFilename(event.getCtx().getCurrentLocale(), "edit_bitstream_permission"));
-                    if (email == null) {
-                        System.out.println("Email template not found: edit_bitstream_permission");
-                        return;
-                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "edit_bitstream_permission");
+
                     emailRecipients.forEach(r -> email.addRecipient(r));
                     email.setReplyTo(senderEmail);
 
@@ -244,6 +222,20 @@ public class Mailing {
                 }
             }
         }
+    }
+
+
+    private static Email readEmailTemplate(Locale locale, String filename) throws Exception {
+        Email email;
+        try {
+            email = Email
+                    .getEmail(I18nUtil.getEmailFilename(locale, filename));
+        } catch (Exception e) {
+            log.error(MessageFormat.format("Error loading email template: {0}", filename));
+            log.error(e);
+            email = null; 
+        }
+        return email;
     }
 
 
