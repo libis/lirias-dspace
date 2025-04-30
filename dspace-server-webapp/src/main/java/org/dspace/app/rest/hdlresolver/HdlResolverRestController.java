@@ -102,7 +102,11 @@ public class HdlResolverRestController {
         if (!handleResolver.isValid()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } else {
-            return new ResponseEntity<>(this.resolveToURL(request, handleResolver), HttpStatus.OK);
+            //hack to get lirias.kuleuven.be URLs on PROD (rather than lirias2repo.kuleuven.be)
+            final String res=this.resolveToURL(request, handleResolver);
+            return new ResponseEntity<>(res.replaceAll("lirias2repo","lirias"), HttpStatus.OK);
+            //return new ResponseEntity<>(res.replaceAll("localhost:7073","lirias.q.icts.kuleuven.be"), HttpStatus.OK);
+            //return new ResponseEntity<>(this.resolveToURL(request, handleResolver), HttpStatus.OK);
         }
     }
 
