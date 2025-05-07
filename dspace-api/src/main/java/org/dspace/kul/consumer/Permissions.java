@@ -1,11 +1,17 @@
 package org.dspace.kul.consumer;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.ResourcePolicy;
 import org.dspace.content.Bitstream;
+import org.dspace.content.DCDate;
 import org.dspace.content.Item;
 import org.dspace.core.Constants;
 import org.dspace.eperson.Group;
@@ -21,11 +27,23 @@ public class Permissions {
         switch (event.getConsumeCaseEnum()) {
             case REDEPOSIT:
             case DEPOSIT: {
+                System.out.println("Case deposit (permissions)");
                 policies = new ArrayList<>();
                 policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
                 if (!RIGHTS_NO_ACCESS_VALUE.equals(getRights(event))) {
                     policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
                 }
+                ResourcePolicy anonymousAccess = readForGroup(event,
+                        event.getGroupsMap().get(KULConsumer.ANONYMOUS_GROUP));
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+                String dateIssuedString = getDateIssued(event);
+                Date dateIssued = simpleDateFormat.parse(dateIssuedString);
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(dateIssued);
+                cal.add(Calendar.YEAR, 1);
+                Date dateEmbargoEnd = cal.getTime();
+                anonymousAccess.setEndDate(dateEmbargoEnd);
+                policies.add(anonymousAccess);
                 break;
             }
             case ADD_VIA_UI:
@@ -67,6 +85,17 @@ public class Permissions {
     }
 
     private static String getRights(final KULEvent event) {
-        return event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "rights", "license", Item.ANY);
+        return event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "rights", "license",
+                Item.ANY);
     }
+
+    private static String getDateIssued(final KULEvent event) {
+        String date = event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "date",
+                "issued", Item.ANY).strip();
+        if (date.isBlank()) {
+            date = DCDate.getCurrent().toString().substring(0, 10);
+        }
+        return date;
+    }
+
 }
