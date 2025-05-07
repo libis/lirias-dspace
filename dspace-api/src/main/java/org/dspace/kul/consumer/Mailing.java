@@ -234,7 +234,7 @@ public class Mailing {
                 }
                 email.addRecipient(senderEmail);
                 email.setReplyTo(senderEmail);
-                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor" };
+                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor", "Filename", "BitstreamID" };
                 String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
                         "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
                 String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
@@ -264,7 +264,7 @@ public class Mailing {
                 }
                 email.addRecipient(senderEmail);
                 email.setReplyTo(senderEmail);
-                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor" };
+                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor", "Filename", "BitstreamID" };
                 String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
                         "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
                 String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
@@ -294,7 +294,7 @@ public class Mailing {
                 }
                 email.addRecipient(senderEmail);
                 email.setReplyTo(senderEmail);
-                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor" };
+                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor", "Filename", "BitstreamID" };
                 String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
                         "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
                 String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
@@ -553,6 +553,8 @@ public class Mailing {
         result.put("Bitstream File Format",
                 getBitstreamMetadataOrEmptyString(bitstream, "dc", "format", null, Item.ANY));
         result.put("Bitstream File Extension", getFileExtension(bitstream.getName()));
+        result.put("Filename", bitstream.getName());
+        result.put("BitstreamID", bitstream.getID());
 
         return result;
     }
