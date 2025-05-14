@@ -28,7 +28,7 @@ import net.handle.hdllib.trust.Permission;
 //@RequestMapping("/api/kul/permissions")
 public class PermissionController {
 
-    // https://josdem.io/techtalk/spring/spring_boot_json_node/
+    //
     private final ObjectMapper mapper = new ObjectMapper();
 
     //@RequestMapping(method = RequestMethod.GET)
@@ -39,6 +39,7 @@ public class PermissionController {
         //bitstreamRestRepository.patchBitstreamsInBulk(context, jsonNode);
         //return ResponseEntity.noContent().build();
         System.out.println(jsonNode.get("fieldName").asBoolean());
+        // return new ResponseEntity<>(new Permission(), HttpStatus.OK);
         return mapper.valueToTree(new Permission());
     }
 }
