@@ -16,6 +16,9 @@ import org.dspace.authorize.AuthorizeException;
 //import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import net.handle.hdllib.trust.Permission;
 
 /**
  * This Controller serves as an example of how & where to add local customizations to the DSpace REST API.
@@ -25,6 +28,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 //@RequestMapping("/api/kul/permissions")
 public class PermissionController {
 
+    // https://josdem.io/techtalk/spring/spring_boot_json_node/
+    private final ObjectMapper mapper = new ObjectMapper();
+
     //@RequestMapping(method = RequestMethod.GET)
     public /*ResponseEntity<RepresentationModel<?>>*/ JsonNode patch(HttpServletRequest request,
                                                         /*@RequestBody(required = true)*/ JsonNode jsonNode)
@@ -32,6 +38,7 @@ public class PermissionController {
         //Context context = obtainContext(request);
         //bitstreamRestRepository.patchBitstreamsInBulk(context, jsonNode);
         //return ResponseEntity.noContent().build();
-        return null;
+        System.out.println(jsonNode.get("fieldName").asBoolean());
+        return mapper.valueToTree(new Permission());
     }
 }
