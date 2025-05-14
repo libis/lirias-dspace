@@ -34,7 +34,8 @@ import org.springframework.context.annotation.Configuration;
     "org.dspace.app.rest.utils",
     "org.dspace.app.configuration",
     "org.dspace.iiif",
-    "org.dspace.app.iiif"
+    "org.dspace.app.iiif",
+    "org.dspace.kul.enpoint"
 })
 public class ApplicationConfig {
     // Allowed CORS origins ("Access-Control-Allow-Origin" header)
