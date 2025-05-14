@@ -50,168 +50,200 @@ public class Mailing {
         if (event.isPhd()) {
             switch (event.getConsumeCaseEnum()) {
                 case REDEPOSIT: {
-                    Set<String> emailRecipients = getContributorEmails(event.getItem(),
-                            List.of("author", "supervisor", "cosupervisor"));
-                    if (emailRecipients.isEmpty()) {
-                        System.out.println("No recipient emails found for redeposit email.");
-                        return;
-                    }
-                    if (senderEmail == null) {
-                        System.out.println("No email sender set.");
-                        return;
-                    }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit");
-                    if (email == null) {
+                    try {
+                        Set<String> emailRecipients = getContributorEmails(event.getItem(),
+                                List.of("author", "supervisor", "cosupervisor"));
+                        if (emailRecipients.isEmpty()) {
+                            System.out.println("No recipient emails found for redeposit email.");
+                            return;
+                        }
+                        if (senderEmail == null) {
+                            System.out.println("No email sender set.");
+                            return;
+                        }
+                        Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit");
+                        if (email == null) {
+                            break;
+                        }
+                        emailRecipients.forEach(r -> email.addRecipient(r));
+                        email.setReplyTo(senderEmail);
+                        email.addArgument(getItemDspaceUrl(event.getItem()));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc",
+                                        "contributor",
+                                        "author", Item.ANY));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                        null, Item.ANY));
+                        email.addArgument(getItemPermission(event));
+                        email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
+                        email.sendHTML();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println(e);
                         break;
                     }
-                    emailRecipients.forEach(r -> email.addRecipient(r));
-                    email.setReplyTo(senderEmail);
-                    email.addArgument(getItemDspaceUrl(event.getItem()));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
-                                    "author", Item.ANY));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
-                                    null, Item.ANY));
-                    email.addArgument(getItemPermission(event));
-                    email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
-                    email.sendHTML();
-                    break;
                 }
                 case ADD_VIA_UI: {
-                    Set<String> emailRecipients = getContributorEmails(event.getItem(),
-                            List.of("author", "supervisor", "cosupervisor"));
-                    if (emailRecipients.isEmpty()) {
-                        System.out.println("No recipient emails found for add bitstream via ui email.");
-                        return;
-                    }
-                    if (senderEmail == null) {
-                        System.out.println("No email sender set.");
-                        return;
-                    }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui");
-                    if (email == null) {
+                    try {
+                        Set<String> emailRecipients = getContributorEmails(event.getItem(),
+                                List.of("author", "supervisor", "cosupervisor"));
+                        if (emailRecipients.isEmpty()) {
+                            System.out.println("No recipient emails found for add bitstream via ui email.");
+                            return;
+                        }
+                        if (senderEmail == null) {
+                            System.out.println("No email sender set.");
+                            return;
+                        }
+                        Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui");
+                        if (email == null) {
+                            break;
+                        }
+                        emailRecipients.forEach(r -> email.addRecipient(r));
+                        email.setReplyTo(senderEmail);
+                        email.addArgument(getItemDspaceUrl(event.getItem()));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc",
+                                        "contributor",
+                                        "author", Item.ANY));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                        null, Item.ANY));
+
+                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
+                        if (permissionHistory.size() > 0) {
+                            String permission = permissionHistory.pop();
+                            email.addArgument(expandPermissionString(permission));
+                        } else {
+                            email.addArgument(null);
+                        }
+                        email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
+                        email.sendHTML();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println(e);
                         break;
                     }
-                    emailRecipients.forEach(r -> email.addRecipient(r));
-                    email.setReplyTo(senderEmail);
-                    email.addArgument(getItemDspaceUrl(event.getItem()));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
-                                    "author", Item.ANY));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
-                                    null, Item.ANY));
-
-                    Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
-                    if (permissionHistory.size() > 0) {
-                        String permission = permissionHistory.pop();
-                        email.addArgument(expandPermissionString(permission));
-                    } else {
-                        email.addArgument(null);
-                    }
-                    email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
-                    email.sendHTML();
-                    break;
                 }
                 case DEPOSIT: {
-                    Set<String> emailRecipients = getContributorEmails(event.getItem(),
-                            List.of("author", "supervisor", "cosupervisor"));
-                    if (emailRecipients.isEmpty()) {
-                        System.out.println("No recipient emails found for deposit email.");
-                        return;
-                    }
-                    if (senderEmail == null) {
-                        System.out.println("No email sender set.");
-                        return;
-                    }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit");
-                    if (email == null) {
+                    try {
+                        Set<String> emailRecipients = getContributorEmails(event.getItem(),
+                                List.of("author", "supervisor", "cosupervisor"));
+                        if (emailRecipients.isEmpty()) {
+                            System.out.println("No recipient emails found for deposit email.");
+                            return;
+                        }
+                        if (senderEmail == null) {
+                            System.out.println("No email sender set.");
+                            return;
+                        }
+                        Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit");
+                        if (email == null) {
+                            break;
+                        }
+                        emailRecipients.forEach(r -> email.addRecipient(r));
+                        email.setReplyTo(senderEmail);
+                        email.addArgument(getItemDspaceUrl(event.getItem()));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc",
+                                        "contributor",
+                                        "author", Item.ANY));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                        null, Item.ANY));
+                        email.addArgument(getItemPermission(event));
+                        email.addArgument(getGroupStartDate(event, event.getBitstreams().get(0), "anonymous"));
+                        email.sendHTML();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println(e);
                         break;
                     }
-                    emailRecipients.forEach(r -> email.addRecipient(r));
-                    email.setReplyTo(senderEmail);
-                    email.addArgument(getItemDspaceUrl(event.getItem()));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
-                                    "author", Item.ANY));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
-                                    null, Item.ANY));
-                    email.addArgument(getItemPermission(event));
-                    email.addArgument(getGroupStartDate(event, event.getBitstreams().get(0), "anonymous"));
-                    email.sendHTML();
-                    break;
                 }
                 case REMOVE: {
-                    Set<String> emailRecipients = getContributorEmails(event.getItem(),
-                            List.of("author", "supervisor", "cosupervisor"));
-                    if (emailRecipients.isEmpty()) {
-                        System.out.println("No recipient emails found for add bitstream removal email.");
-                        return;
-                    }
-                    if (senderEmail == null) {
-                        System.out.println("No email sender set.");
-                        return;
-                    }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "remove_bitstream");
-                    if (email == null) {
+                    try {
+                        Set<String> emailRecipients = getContributorEmails(event.getItem(),
+                                List.of("author", "supervisor", "cosupervisor"));
+                        if (emailRecipients.isEmpty()) {
+                            System.out.println("No recipient emails found for add bitstream removal email.");
+                            return;
+                        }
+                        if (senderEmail == null) {
+                            System.out.println("No email sender set.");
+                            return;
+                        }
+                        Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "remove_bitstream");
+                        if (email == null) {
+                            break;
+                        }
+                        emailRecipients.forEach(r -> email.addRecipient(r));
+                        email.setReplyTo(senderEmail);
+
+                        email.addArgument(getItemDspaceUrl(event.getItem()));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc",
+                                        "contributor",
+                                        "author", Item.ANY));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                        null, Item.ANY));
+                        email.sendHTML();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println(e);
                         break;
                     }
-                    emailRecipients.forEach(r -> email.addRecipient(r));
-                    email.setReplyTo(senderEmail);
 
-                    email.addArgument(getItemDspaceUrl(event.getItem()));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
-                                    "author", Item.ANY));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
-                                    null, Item.ANY));
-                    email.sendHTML();
-                    break;
                 }
                 case EDIT_PERMISSION: {
-                    Set<String> emailRecipients = getContributorEmails(event.getItem(),
-                            List.of("author", "supervisor", "cosupervisor"));
-                    if (emailRecipients.isEmpty()) {
-                        System.out.println("No recipient emails found for edit bitstream permission email.");
-                        return;
-                    }
-                    if (senderEmail == null) {
-                        System.out.println("No email sender set.");
-                        return;
-                    }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "edit_bitstream_permission");
-                    if (email == null) {
+                    try {
+                        Set<String> emailRecipients = getContributorEmails(event.getItem(),
+                                List.of("author", "supervisor", "cosupervisor"));
+                        if (emailRecipients.isEmpty()) {
+                            System.out.println("No recipient emails found for edit bitstream permission email.");
+                            return;
+                        }
+                        if (senderEmail == null) {
+                            System.out.println("No email sender set.");
+                            return;
+                        }
+                        Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "edit_bitstream_permission");
+                        if (email == null) {
+                            break;
+                        }
+                        emailRecipients.forEach(r -> email.addRecipient(r));
+                        email.setReplyTo(senderEmail);
+
+                        email.addArgument(getItemDspaceUrl(event.getItem()));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc",
+                                        "contributor",
+                                        "author", Item.ANY));
+                        email.addArgument(
+                                event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
+                                        null, Item.ANY));
+                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
+                        if (permissionHistory.size() > 0) {
+                            final String previousPermission = permissionHistory.pop();
+                            email.addArgument(expandPermissionString(previousPermission));
+                        } else {
+                            email.addArgument(null);
+                        }
+                        if (permissionHistory.size() > 0) {
+                            final String currentPermission = permissionHistory.pop();
+                            email.addArgument(expandPermissionString(currentPermission));
+                        } else {
+                            email.addArgument(null);
+                        }
+                        email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
+                        email.sendHTML();
+                        break;
+                    } catch (Exception e) {
+                        System.err.println(e);
                         break;
                     }
-                    emailRecipients.forEach(r -> email.addRecipient(r));
-                    email.setReplyTo(senderEmail);
 
-                    email.addArgument(getItemDspaceUrl(event.getItem()));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "contributor",
-                                    "author", Item.ANY));
-                    email.addArgument(
-                            event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
-                                    null, Item.ANY));
-                    Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
-                    if (permissionHistory.size() > 0) {
-                        final String previousPermission = permissionHistory.pop();
-                        email.addArgument(expandPermissionString(previousPermission));
-                    } else {
-                        email.addArgument(null);
-                    }
-                    if (permissionHistory.size() > 0) {
-                        final String currentPermission = permissionHistory.pop();
-                        email.addArgument(expandPermissionString(currentPermission));
-                    } else {
-                        email.addArgument(null);
-                    }
-                    email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
-                    email.sendHTML();
-                    break;
                 }
                 default: {
                     log.error("phd mailing for this event not implemented: " + event.getConsumeCaseEnum().name());
@@ -222,94 +254,118 @@ public class Mailing {
         }
         switch (event.getConsumeCaseEnum()) {
             case REDEPOSIT: {
-                System.out.println("OA emails: Redeposit case");
-                final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
-                if (senderEmail == null) {
-                    System.out.println("No email sender set.");
-                    return;
-                }
-                Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit_oa");
-                if (email == null) {
+                try {
+                    System.out.println("OA emails: Redeposit case");
+                    final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
+                    if (senderEmail == null) {
+                        System.out.println("No email sender set.");
+                        return;
+                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "redeposit_oa");
+                    if (email == null) {
+                        break;
+                    }
+                    email.addRecipient(senderEmail);
+                    email.setReplyTo(senderEmail);
+                    String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor",
+                            "Filename",
+                            "BitstreamID" };
+                    String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
+                            "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
+                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+                    String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
+                    String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
+                            "{border: 1px;}");
+                    email.addArgument(itemMetadata.get("Limo URL"));
+                    email.addArgument(itemMetadata.get("DSpace URL"));
+                    email.addArgument(itemMetadata.get("Title"));
+                    email.addArgument(basicMetadata);
+                    email.addArgument(metadataForOA);
+                    email.addArgument(logbookTable);
+                    email.sendHTML();
+                    break;
+                } catch (Exception e) {
+                    System.err.println(e);
                     break;
                 }
-                email.addRecipient(senderEmail);
-                email.setReplyTo(senderEmail);
-                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor", "Filename", "BitstreamID" };
-                String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
-                        "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
-                String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
-                String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
-                String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
-                String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
-                        "{border: 1px;}");
-                email.addArgument(itemMetadata.get("Limo URL"));
-                email.addArgument(itemMetadata.get("DSpace URL"));
-                email.addArgument(itemMetadata.get("Title"));
-                email.addArgument(basicMetadata);
-                email.addArgument(metadataForOA);
-                email.addArgument(logbookTable);
-                email.sendHTML();
-                break;
+
             }
             case ADD_VIA_UI: {
-                System.out.println("OA emails: Add from UI case");
-                final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
-                if (senderEmail == null) {
-                    System.out.println("No email sender set.");
-                    return;
-                }
-                Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui_oa");
-                if (email == null) {
+                try {
+                    System.out.println("OA emails: Add from UI case");
+                    final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
+                    if (senderEmail == null) {
+                        System.out.println("No email sender set.");
+                        return;
+                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui_oa");
+                    if (email == null) {
+                        break;
+                    }
+                    email.addRecipient(senderEmail);
+                    email.setReplyTo(senderEmail);
+                    String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor",
+                            "Filename",
+                            "BitstreamID" };
+                    String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
+                            "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
+                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+                    String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
+                    String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
+                            "{border: 1px;}");
+                    email.addArgument(itemMetadata.get("Limo URL"));
+                    email.addArgument(itemMetadata.get("DSpace URL"));
+                    email.addArgument(itemMetadata.get("Title"));
+                    email.addArgument(basicMetadata);
+                    email.addArgument(metadataForOA);
+                    email.addArgument(logbookTable);
+                    email.sendHTML();
+                    break;
+                } catch (Exception e) {
+                    System.err.println(e);
                     break;
                 }
-                email.addRecipient(senderEmail);
-                email.setReplyTo(senderEmail);
-                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor", "Filename", "BitstreamID" };
-                String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
-                        "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
-                String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
-                String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
-                String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
-                String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
-                        "{border: 1px;}");
-                email.addArgument(itemMetadata.get("Limo URL"));
-                email.addArgument(itemMetadata.get("DSpace URL"));
-                email.addArgument(itemMetadata.get("Title"));
-                email.addArgument(basicMetadata);
-                email.addArgument(metadataForOA);
-                email.addArgument(logbookTable);
-                email.sendHTML();
-                break;
+
             }
             case DEPOSIT: {
-                System.out.println("OA emails: Deposit case");
-                final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
-                if (senderEmail == null) {
-                    System.out.println("No email sender set.");
-                    return;
-                }
-                Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit_oa");
-                if (email == null) {
+                try {
+                    System.out.println("OA emails: Deposit case");
+                    final HashMap<String, String> itemMetadata = getItemMetadataMap(event);
+                    if (senderEmail == null) {
+                        System.out.println("No email sender set.");
+                        return;
+                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "deposit_oa");
+                    if (email == null) {
+                        break;
+                    }
+                    email.addRecipient(senderEmail);
+                    email.setReplyTo(senderEmail);
+                    String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor",
+                            "Filename",
+                            "BitstreamID" };
+                    String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
+                            "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
+                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+                    String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
+                    String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
+                            "{border: 1px;}");
+                    email.addArgument(itemMetadata.get("Limo URL"));
+                    email.addArgument(itemMetadata.get("DSpace URL"));
+                    email.addArgument(itemMetadata.get("Title"));
+                    email.addArgument(basicMetadata);
+                    email.addArgument(metadataForOA);
+                    email.addArgument(logbookTable);
+                    email.sendHTML();
+                    break;
+                } catch (Exception e) {
+                    System.err.println(e);
                     break;
                 }
-                email.addRecipient(senderEmail);
-                email.setReplyTo(senderEmail);
-                String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor", "Filename", "BitstreamID" };
-                String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
-                        "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
-                String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
-                String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
-                String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
-                String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
-                        "{border: 1px;}");
-                email.addArgument(itemMetadata.get("Limo URL"));
-                email.addArgument(itemMetadata.get("DSpace URL"));
-                email.addArgument(itemMetadata.get("Title"));
-                email.addArgument(basicMetadata);
-                email.addArgument(metadataForOA);
-                email.addArgument(logbookTable);
-                email.sendHTML();
-                break;
+
             }
             case REMOVE: {
                 break;
