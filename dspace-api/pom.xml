@@ -1,4 +1,6 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.dspace</groupId>
     <artifactId>dspace-api</artifactId>
@@ -51,7 +53,8 @@
                     <debug>true</debug>
                     <showDeprecation>true</showDeprecation>
                     <annotationProcessorPaths>
-                        <!-- Enable Hibernate's Metamodel Generator to generate metadata model classes
+                        <!-- Enable Hibernate's Metamodel Generator to generate metadata model
+                        classes
                              (ending in _ suffix) for more type-safe Criteria queries -->
                         <path>
                             <groupId>org.hibernate</groupId>
@@ -152,8 +155,10 @@
                         </goals>
                         <configuration>
                             <source>
-                                project.properties['agnostic.build.dir'] = project.build.directory.replace(File.separator, '/');
-                                log.info("Initializing Maven property 'agnostic.build.dir' to: {}", project.properties['agnostic.build.dir']);
+                                project.properties['agnostic.build.dir'] =
+                                project.build.directory.replace(File.separator, '/');
+                                log.info("Initializing Maven property 'agnostic.build.dir' to: {}",
+                                project.properties['agnostic.build.dir']);
                             </source>
                         </configuration>
                     </execution>
@@ -173,7 +178,8 @@
                 </configuration>
             </plugin>
 
-            <!-- Used to create/generate 'org.dspace.workflow' classes from our workflow-curation.xsd via JAXB -->
+            <!-- Used to create/generate 'org.dspace.workflow' classes from our
+            workflow-curation.xsd via JAXB -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>jaxb2-maven-plugin</artifactId>
@@ -263,8 +269,10 @@
                         <configuration>
                             <systemPropertyVariables>
                                 <!-- Specify the dspace.dir to use for test environment -->
-                                <!-- ${agnostic.build.dir} is set dynamically by groovy-maven-plugin above -->
-                                <!-- This system property is loaded by AbstractDSpaceTest to initialize the test environment -->
+                                <!-- ${agnostic.build.dir} is set dynamically by groovy-maven-plugin
+                                above -->
+                                <!-- This system property is loaded by AbstractDSpaceTest to
+                                initialize the test environment -->
                                 <dspace.dir>${agnostic.build.dir}/testing/dspace/</dspace.dir>
                                 <!-- Turn off any DSpace logging -->
                                 <dspace.log.init.disable>true</dspace.log.init.disable>
@@ -323,7 +331,8 @@
                         <configuration>
                             <systemPropertyVariables>
                                 <!-- Specify the dspace.dir to use for test environment -->
-                                <!-- ${agnostic.build.dir} is set dynamically by groovy-maven-plugin above -->
+                                <!-- ${agnostic.build.dir} is set dynamically by groovy-maven-plugin
+                                above -->
                                 <dspace.dir>${agnostic.build.dir}/testing/dspace/</dspace.dir>
                                 <!-- Turn off any DSpace logging -->
                                 <dspace.log.init.disable>true</dspace.log.init.disable>
@@ -344,13 +353,13 @@
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
-                <exclusions>
-                    <!-- Newer version pulled in via Jersey below -->
-                    <exclusion>
-                        <groupId>org.javassist</groupId>
-                        <artifactId>javassist</artifactId>
-                    </exclusion>
-                </exclusions>
+            <exclusions>
+                <!-- Newer version pulled in via Jersey below -->
+                <exclusion>
+                    <groupId>org.javassist</groupId>
+                    <artifactId>javassist</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
@@ -552,6 +561,11 @@
             <artifactId>spring-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>5.3.31</version>
+        </dependency>
         <!-- Used for RSS / ATOM syndication feeds -->
         <dependency>
             <groupId>com.rometools</groupId>
@@ -727,7 +741,8 @@
             <artifactId>jaxb-runtime</artifactId>
         </dependency>
 
-        <!-- Jersey / JAX-RS client (javax.ws.rs.*) dependencies needed to integrate with external sources/services -->
+        <!-- Jersey / JAX-RS client (javax.ws.rs.*) dependencies needed to integrate with external
+        sources/services -->
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
@@ -770,8 +785,8 @@
                     <artifactId>javassist</artifactId>
                 </exclusion>
                 <exclusion>
-                	<groupId>io.swagger</groupId>
-                	<artifactId>swagger-jersey-jaxrs</artifactId>
+                    <groupId>io.swagger</groupId>
+                    <artifactId>swagger-jersey-jaxrs</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -830,13 +845,13 @@
             <scope>test</scope>
             <exclusions>
                 <!-- Exclude snakeyaml to avoid conflicts with: spring-boot-starter-cache -->
-            	<exclusion>
-            		<groupId>org.yaml</groupId>
-            		<artifactId>snakeyaml</artifactId>
-            	</exclusion>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
-        
+
         <dependency>
             <groupId>io.findify</groupId>
             <artifactId>s3mock_2.13</artifactId>
@@ -853,81 +868,81 @@
                 </exclusion>
             </exclusions>
         </dependency>
-    
+
     </dependencies>
 
     <dependencyManagement>
         <dependencies>
-          <!-- for mockserver -->
-          <!-- Solve dependency convergence issues related to Solr and
+            <!-- for mockserver -->
+            <!-- Solve dependency convergence issues related to Solr and
                'mockserver-junit-rule' by selecting the versions we want to use. -->
-          <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-buffer</artifactId>
-            <version>4.1.94.Final</version>
-          </dependency>
-          <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport</artifactId>
-            <version>4.1.94.Final</version>
-          </dependency>
-          <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport-native-unix-common</artifactId>
-            <version>4.1.94.Final</version>
-           </dependency>
-          <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-common</artifactId>
-            <version>4.1.94.Final</version>
-          </dependency>
-          <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-handler</artifactId>
-            <version>4.1.94.Final</version>
-          </dependency>
-          <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec</artifactId>
-            <version>4.1.94.Final</version>
-          </dependency>
-          <dependency>
-            <groupId>org.apache.velocity</groupId>
-            <artifactId>velocity-engine-core</artifactId>
-            <version>2.3</version>
-          </dependency>
-          <dependency>
-              <groupId>org.xmlunit</groupId>
-              <artifactId>xmlunit-core</artifactId>
-              <version>2.8.0</version>
-              <scope>test</scope>
-          </dependency>
-          <dependency>
-            <groupId>com.github.java-json-tools</groupId>
-            <artifactId>json-schema-validator</artifactId>
-            <version>2.2.14</version>
-          </dependency>
-          <dependency>
-            <groupId>jakarta.xml.bind</groupId>
-            <artifactId>jakarta.xml.bind-api</artifactId>
-            <version>2.3.3</version>
-          </dependency>
-          <dependency>
-            <groupId>javax.validation</groupId>
-            <artifactId>validation-api</artifactId>
-            <version>2.0.1.Final</version>
-          </dependency>
-          <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-core</artifactId>
-            <version>1.6.2</version>
-          </dependency>
-          <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>2.13.9</version>
-            <scope>test</scope>
-          </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-buffer</artifactId>
+                <version>4.1.94.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-transport</artifactId>
+                <version>4.1.94.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-transport-native-unix-common</artifactId>
+                <version>4.1.94.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-common</artifactId>
+                <version>4.1.94.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-handler</artifactId>
+                <version>4.1.94.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec</artifactId>
+                <version>4.1.94.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.velocity</groupId>
+                <artifactId>velocity-engine-core</artifactId>
+                <version>2.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.xmlunit</groupId>
+                <artifactId>xmlunit-core</artifactId>
+                <version>2.8.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.github.java-json-tools</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>2.2.14</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.xml.bind</groupId>
+                <artifactId>jakarta.xml.bind-api</artifactId>
+                <version>2.3.3</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.validation</groupId>
+                <artifactId>validation-api</artifactId>
+                <version>2.0.1.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.swagger</groupId>
+                <artifactId>swagger-core</artifactId>
+                <version>1.6.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-library</artifactId>
+                <version>2.13.9</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
