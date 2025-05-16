@@ -7,6 +7,8 @@
  */
 package org.dspace.kul.enpoint;
 
+import static org.dspace.core.Constants.GROUP;
+
 import java.sql.SQLException;
 import java.util.UUID;
 
@@ -27,17 +29,18 @@ import org.dspace.services.model.Request;
 import org.dspace.web.ContextUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.dspace.content.Bitstream;
 import org.dspace.content.DCDate;
 import org.dspace.eperson.Group;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -71,10 +74,27 @@ public class PermissionController {
     public ResponseEntity<BitstreamPermission> get(HttpServletRequest request, @PathVariable UUID bitstreamID)
             throws SQLException, AuthorizeException {
         Context context = ContextUtil.obtainContext(request);
-        System.out.println("bitstream: " + bitstreamID);
-        System.out.println("isadmin: " + authorizeService.isAdmin(context));
+        System.out.println("GET bitstreamID: " + bitstreamID);
+        System.out.println("GET isAdmin: " + authorizeService.isAdmin(context));
         Bitstream bitstream = bitstreamService.find(context, bitstreamID);
         return new ResponseEntity<>(getBitstreamPermission(context, bitstream), HttpStatus.OK);
+    }
+
+    @PostMapping("/{bitstreamID}")
+    public ResponseEntity<BitstreamPermission> post(HttpServletRequest request, @PathVariable UUID bitstreamID,
+            @RequestBody BitstreamPermission permission)
+            throws SQLException, AuthorizeException {
+        Context context = ContextUtil.obtainContext(request);
+        System.out.println("POST bitstream: " + bitstreamID);
+        System.out.println("POST isAdmin: " + authorizeService.isAdmin(context));
+        Bitstream bitstream = bitstreamService.find(context, bitstreamID);
+        try {
+            setBitstreamPermission(context, bitstream, permission);
+        } catch (Exception e) {
+            System.err.println(e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     private BitstreamPermission getBitstreamPermission(Context context, Bitstream bitstream) throws SQLException {
@@ -105,6 +125,111 @@ public class PermissionController {
         }
 
         return result;
+    }
+
+    private ResourcePolicy readForGroup(Context context, Bitstream bitstream, String groupName)
+            throws SQLException, AuthorizeException {
+        final ResourcePolicy rp = resourcePolicyService.create(context);
+        rp.setAction(Constants.READ);
+        rp.setGroup(groupService.findByName(context, groupName));
+        return rp;
+    }
+
+    private void removePolicy(Context context, Bitstream bitstream, String groupName) {
+        Group group=null;
+        try {
+            group = groupService.findByName(context, groupName);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+        if (null!=group) {
+            try {
+                authorizeService.removeGroupPolicies(context, bitstream, group);
+                System.out.println("Removing policy: " + group.getName());
+            } catch (Exception e) {
+                System.err.println(e);
+            }
+        } else {
+            System.err.println("Group " + groupName + " not found.");
+        }
+
+    }
+
+    private void changeBitstreamPolicies(Context context, Bitstream bitstream,
+            final List<ResourcePolicy> toAdd) throws SQLException, AuthorizeException {
+        for (String groupName : KULConsumer.ALL_GROUP_NAMES) {
+            removePolicy(context, bitstream, groupName);
+        }
+        if (!toAdd.isEmpty()) {
+            System.out.println("Adding policies: " + toAdd.toString());
+            try{
+                authorizeService.addPolicies(context, toAdd, bitstream);
+            } catch (Exception e) {
+                System.err.println(e);
+            }
+        }
+        bitstreamService.update(context, bitstream);
+    }
+
+    private void setBitstreamPermission(Context context, Bitstream bitstream, BitstreamPermission permission)
+            throws SQLException, AuthorizeException {
+        System.out.println("Setting permission to " + permission.getPermission());
+        System.out.println("Embargo end date (if applicable) " + permission.getEmbargoEndDate());
+        List<ResourcePolicy> policiesToAdd = new ArrayList<>();
+
+        switch (permission.getPermission()) {
+            case "PRIVATE": {
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                changeBitstreamPolicies(context, bitstream, policiesToAdd);
+                break;
+            } // remove all, add ADMINS_LOCAL_GROUP
+            case "INTRANET": {
+                System.out.println("case intranet");
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.INTRANET_GROUP));
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                changeBitstreamPolicies(context, bitstream, policiesToAdd);
+                break;
+            } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP
+            case "PUBLIC": {
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.INTRANET_GROUP));
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
+                rp.setStartDate(DCDate.getCurrent().toDate());
+                policiesToAdd.add(rp);
+                changeBitstreamPolicies(context, bitstream, policiesToAdd);
+                break;
+            } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP, ANONYMOUS_GROUP
+              // (startDate: now)
+            case "EMBARGO": {
+                System.out.println("case embargo");
+                if (null == permission.getEmbargoEndDate()) {
+                    System.err.println("No end date entered for embargo.");
+                    break; // no end date specified
+                }
+                Number endDateDay = 31; // default: last day of month
+                Number endDateMonth = 12; // default: December
+                if (null != permission.getEmbargoEndDate().day) {
+                    endDateDay = permission.getEmbargoEndDate().day;
+                } // set date if present
+                if (null != permission.getEmbargoEndDate().month) {
+                    endDateMonth = permission.getEmbargoEndDate().month;
+                } // set month if present
+                Number endDateYear = permission.getEmbargoEndDate().year;
+                if (null == endDateYear) {
+                    System.err.println("No end date year entered for embargo.");
+                    break;
+                } // no year: invalid
+                ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
+                rp.setStartDate(DCDate.getCurrent().toDate());
+                policiesToAdd.add(rp);
+                rp.setEndDate(new Date((int) endDateYear, (int) endDateMonth, (int) endDateDay));
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.INTRANET_GROUP));
+                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                changeBitstreamPolicies(context, bitstream, policiesToAdd);
+                break;
+            }
+        }
+
     }
 
 }
