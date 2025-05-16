@@ -169,6 +169,7 @@ public class PermissionController {
             }
         }
         bitstreamService.update(context, bitstream);
+        context.commit();
     }
 
     private void setBitstreamPermission(Context context, Bitstream bitstream, BitstreamPermission permission)
