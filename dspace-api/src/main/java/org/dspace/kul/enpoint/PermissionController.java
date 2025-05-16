@@ -129,20 +129,30 @@ public class PermissionController {
 
     private ResourcePolicy readForGroup(Context context, Bitstream bitstream, String groupName)
             throws SQLException, AuthorizeException {
-        final ResourcePolicy rp = resourcePolicyService.create(context);
-        rp.setAction(Constants.READ);
-        rp.setGroup(groupService.findByName(context, groupName));
-        return rp;
-    }
-
-    private void removePolicy(Context context, Bitstream bitstream, String groupName) {
-        Group group=null;
+        Group group = null;
         try {
             group = groupService.findByName(context, groupName);
         } catch (Exception e) {
             System.err.println(e);
         }
-        if (null!=group) {
+        if (null != group) {
+            final ResourcePolicy rp = resourcePolicyService.create(context);
+            rp.setAction(Constants.READ);
+            rp.setGroup(groupService.findByName(context, groupName));
+            return rp;
+        } else {
+            return null;
+        }
+    }
+
+    private void removePolicy(Context context, Bitstream bitstream, String groupName) {
+        Group group = null;
+        try {
+            group = groupService.findByName(context, groupName);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+        if (null != group) {
             try {
                 authorizeService.removeGroupPolicies(context, bitstream, group);
                 System.out.println("Removing policy: " + group.getName());
@@ -162,7 +172,7 @@ public class PermissionController {
         }
         if (!toAdd.isEmpty()) {
             System.out.println("Adding policies: " + toAdd.toString());
-            try{
+            try {
                 authorizeService.addPolicies(context, toAdd, bitstream);
             } catch (Exception e) {
                 System.err.println(e);
@@ -176,24 +186,24 @@ public class PermissionController {
             throws SQLException, AuthorizeException {
         System.out.println("Setting permission to " + permission.getPermission());
         System.out.println("Embargo end date (if applicable) " + permission.getEmbargoEndDate());
-        List<ResourcePolicy> policiesToAdd = new ArrayList<>();
+        List<ResourcePolicy> policiesToAdd;
 
         switch (permission.getPermission()) {
             case "PRIVATE": {
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                policiesToAdd = getPoliciesForGroups(context, bitstream, List.of(KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             } // remove all, add ADMINS_LOCAL_GROUP
             case "INTRANET": {
                 System.out.println("case intranet");
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.INTRANET_GROUP));
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                policiesToAdd = getPoliciesForGroups(context, bitstream,
+                        List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP
             case "PUBLIC": {
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.INTRANET_GROUP));
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
+                policiesToAdd = getPoliciesForGroups(context, bitstream,
+                        List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
                 rp.setStartDate(DCDate.getCurrent().toDate());
                 policiesToAdd.add(rp);
@@ -203,6 +213,9 @@ public class PermissionController {
               // (startDate: now)
             case "EMBARGO": {
                 System.out.println("case embargo");
+                policiesToAdd = getPoliciesForGroups(context, bitstream,
+                        List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
+
                 if (null == permission.getEmbargoEndDate()) {
                     System.err.println("No end date entered for embargo.");
                     break; // no end date specified
@@ -224,13 +237,23 @@ public class PermissionController {
                 rp.setStartDate(DCDate.getCurrent().toDate());
                 policiesToAdd.add(rp);
                 rp.setEndDate(new Date((int) endDateYear, (int) endDateMonth, (int) endDateDay));
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.INTRANET_GROUP));
-                policiesToAdd.add(readForGroup(context, bitstream, KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             }
         }
 
+    }
+
+    private List<ResourcePolicy> getPoliciesForGroups(Context context, Bitstream bitstream, List<String> groupNames)
+            throws SQLException, AuthorizeException {
+        List<ResourcePolicy> result = new ArrayList<>();
+        for (String groupName : groupNames) {
+            ResourcePolicy policy = readForGroup(context, bitstream, groupName);
+            if (null != policy) {
+                result.add(policy);
+            }
+        }
+        return result;
     }
 
 }
