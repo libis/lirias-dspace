@@ -44,6 +44,13 @@ public class Permissions {
                 Date dateEmbargoEnd = cal.getTime();
                 anonymousAccess.setEndDate(dateEmbargoEnd);
                 policies.add(anonymousAccess);
+                System.out.println("Writing new permission to bitstream metadata: EMBARGO");
+                event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
+                        "bitstream",
+                        "permissions", "en",
+                        DCDate.getCurrent().toDate() + ";" + "EMBARGO");
+                event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
+                // write first permission after first three policies are added to avoid unnecessary emails on deposit
                 break;
             }
             case ADD_VIA_UI:

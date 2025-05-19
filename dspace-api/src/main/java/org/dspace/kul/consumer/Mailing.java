@@ -228,7 +228,8 @@ public class Mailing {
                             final String previousPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(previousPermission));
                         } else {
-                            email.addArgument(null);
+                            break;
+                            // do not send email when there is no previous permission 
                         }
                         if (permissionHistory.size() > 0) {
                             final String currentPermission = permissionHistory.pop();
