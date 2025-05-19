@@ -215,7 +215,8 @@ public class PermissionController {
                 System.out.println("case embargo");
                 policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
-
+                System.out.println(permission);
+                System.out.println(permission.getEmbargoEndDate());
                 if (null == permission.getEmbargoEndDate()) {
                     System.err.println("No end date entered for embargo.");
                     break; // no end date specified
@@ -234,9 +235,8 @@ public class PermissionController {
                     break;
                 } // no year: invalid
                 ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
-                rp.setStartDate(DCDate.getCurrent().toDate());
+                rp.setStartDate(new Date((int) endDateYear-1900, (int) endDateMonth, (int) endDateDay));
                 policiesToAdd.add(rp);
-                rp.setEndDate(new Date((int) endDateYear, (int) endDateMonth, (int) endDateDay));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             }
