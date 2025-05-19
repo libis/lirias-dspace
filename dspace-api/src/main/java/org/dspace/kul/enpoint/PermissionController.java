@@ -121,7 +121,7 @@ public class PermissionController {
         }
         result.setPermission(permission);
         if ("EMBARGO".equalsIgnoreCase(permission) && null != startDate) {
-            result.setEmbargoEndDate(startDate.getDate(), startDate.getMonth(), startDate.getYear());
+            result.setEmbargoEndDate(startDate.getDate()+1900, startDate.getMonth(), startDate.getYear());
         }
 
         return result;
