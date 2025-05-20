@@ -66,7 +66,6 @@ public class Provenance {
             final String permissionMessage = getBitstreamPermissionText(event, b);
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
-                updateBitstreamPermissionMetadata(event, event.getBitstream(), null, permissionMessage);
             }
             if (permissionMessage == "EMBARGO") {
                 for (final ResourcePolicy policy : event.getServices().authorizeService.getPoliciesActionFilter(
@@ -168,10 +167,6 @@ public class Provenance {
                 }
             }
             message += " ";
-            if (b != null && b.getID() == event.getBitstream().getID()) {
-                updateBitstreamPermissionMetadata(event, event.getBitstream(), null, permissionMessage);
-            }
-
         }
 
         message = MessageFormat.format("Redeposited by {0} ({1}) on {2} - {3}",
@@ -225,8 +220,9 @@ public class Provenance {
 
     private static void updateBitstreamPermissionMetadata(KULEvent event, Bitstream bitstream,
             String previousPermission, String newPermission) throws Exception {
-        System.out.println("Writing new permission to bitstream metadata: " + newPermission
-                + " (Previous permission: " + previousPermission + ")");
+        System.out.println(
+                "Writing new permission to bitstream metadata for " + bitstream.getName() + " : " + newPermission
+                        + " (Previous permission: " + previousPermission + ")");
         event.getServices().bitstreamService.addMetadata(event.getCtx(), bitstream, "dc", "bitstream",
                 "permissions", "en",
                 DCDate.getCurrent().toDate() + ";" + newPermission);
@@ -289,7 +285,8 @@ public class Provenance {
                     && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
                 final String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
                 if (temp.length == 2) {
-                    final Date previousPermissionDate = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy").parse(temp[0]);
+                    final Date previousPermissionDate = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy")
+                            .parse(temp[0]);
                     final String previousPermission = temp[1];
                     if (currentPermissionDate == null || previousPermissionDate.after(currentPermissionDate)) {
                         currentPermissionDate = previousPermissionDate;

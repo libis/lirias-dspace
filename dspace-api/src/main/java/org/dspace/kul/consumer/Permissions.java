@@ -23,38 +23,33 @@ public class Permissions {
     public static final String RIGHTS_NO_ACCESS_VALUE = "No access (only for strictly confidential material)";
 
     public static void applyTo(final KULEvent event) throws Exception {
-        List<ResourcePolicy> policies = null;
         switch (event.getConsumeCaseEnum()) {
             case REDEPOSIT:
-            case DEPOSIT: {
-                System.out.println("Case deposit (permissions)");
-                policies = new ArrayList<>();
-                policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
-                if (!RIGHTS_NO_ACCESS_VALUE.equals(getRights(event))) {
-                    policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+                try {
+                    System.out.println("Redeposit (permissions)");
+                    setDepositBitstreamPolicies(event);
+                    break;
+                } catch (Exception e) {
+                    System.err.println("Redeposit (permissions): " + e);
+                    break;
                 }
-                ResourcePolicy anonymousAccess = readForGroup(event,
-                        event.getGroupsMap().get(KULConsumer.ANONYMOUS_GROUP));
-                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
-                String dateIssuedString = getDateIssued(event);
-                Date dateIssued = simpleDateFormat.parse(dateIssuedString);
-                Calendar cal = Calendar.getInstance();
-                cal.setTime(dateIssued);
-                cal.add(Calendar.YEAR, 1);
-                Date dateEmbargoEnd = cal.getTime();
-                anonymousAccess.setEndDate(dateEmbargoEnd);
-                policies.add(anonymousAccess);
-                System.out.println("Writing new permission to bitstream metadata: EMBARGO");
-                event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
-                        "bitstream",
-                        "permissions", "en",
-                        DCDate.getCurrent().toDate() + ";" + "EMBARGO");
-                event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
-                // write first permission after first three policies are added to avoid unnecessary emails on deposit
+
+            case DEPOSIT:
+                try {
+                    System.out.println("Deposit (permissions)");
+                    setDepositBitstreamPolicies(event);
+                    break;
+                } catch (Exception e) {
+                    System.err.println("Deposit (permissions): " + e);
+                    break;
+                }
+
+            case ADD_VIA_UI: {
                 break;
             }
-            case ADD_VIA_UI:
-            case REMOVE:
+            case REMOVE: {
+                break;
+            }
             case EDIT_PERMISSION: {
                 break;
             }
@@ -63,11 +58,71 @@ public class Permissions {
                 break;
             }
         }
+
+    }
+
+    private static void setDepositBitstreamPolicies(final KULEvent event) throws Exception {
+        String permission = "PRIVATE";
+        List<ResourcePolicy> policies = new ArrayList<>();
+        policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
+        if (!RIGHTS_NO_ACCESS_VALUE.equals(getRights(event))) {
+            // else: add Intranet
+            policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+            permission = "INTRANET";
+            // if PhD: add embargo for 1 year
+            if (event.isPhd()) {
+            ResourcePolicy anonymousAccess = readForGroup(event,
+                    event.getGroupsMap().get(KULConsumer.ANONYMOUS_GROUP));
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+            String dateIssuedString = getDateIssued(event);
+            Date dateIssued = simpleDateFormat.parse(dateIssuedString);
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(dateIssued);
+            cal.add(Calendar.YEAR, 1);
+            Date dateEmbargoEnd = cal.getTime();
+            anonymousAccess.setStartDate(dateEmbargoEnd);
+            policies.add(anonymousAccess);
+            permission = "EMBARGO";
+            }
+        }
+        addPoliciesToBitstream(event, policies);
+
+        // write first permission after first three policies are added to avoid
+        // unnecessary emails on deposit
+        if (event.getBitstream() != null) {
+            System.out.println(
+                "Writing new permission to bitstream metadata for " + event.getBitstream() + " : " + permission);
+
+            event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
+                    "bitstream",
+                    "permissions", "en",
+                    DCDate.getCurrent().toDate() + ";" + permission);
+                    
+            event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
+        } else {
+            for (final Bitstream b : event.getBitstreams()) {
+            System.out.println(
+                "Writing new permission to bitstream metadata for " + b + " : " + permission);
+
+                event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
+                        "bitstream",
+                        "permissions", "en",
+                        DCDate.getCurrent().toDate() + ";" + permission);
+                event.getServices().bitstreamService.update(event.getCtx(), b);
+            }
+        }
+
+
+    }
+
+    private static void addPoliciesToBitstream(final KULEvent event, List<ResourcePolicy> policies) throws Exception {
         if (policies != null) {
             if (event.getBitstream() != null) {
+                System.out.println("Adding policy to bitstream (" + event.getBitstream().getName() + ")"); 
                 changeBitstreamPolicies(event, event.getBitstream(), policies);
             } else {
                 for (final Bitstream b : event.getBitstreams()) {
+                    System.out.println("Adding policy to bitstream (" + b + ")"); 
                     changeBitstreamPolicies(event, b, policies);
                 }
             }

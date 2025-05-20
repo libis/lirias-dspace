@@ -111,7 +111,7 @@ public class Mailing {
                                 event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
                                         null, Item.ANY));
 
-                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
+                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event, event.getBitstream());
                         if (permissionHistory.size() > 0) {
                             String permission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(permission));
@@ -223,19 +223,23 @@ public class Mailing {
                         email.addArgument(
                                 event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
                                         null, Item.ANY));
-                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event);
+                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event, event.getBitstream());
                         if (permissionHistory.size() > 0) {
                             final String previousPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(previousPermission));
                         } else {
+                            System.out.println("No current permission found for " + event.getBitstream().getName());
                             break;
-                            // do not send email when there is no previous permission 
+                            // do not send email when no current permission found
                         }
                         if (permissionHistory.size() > 0) {
                             final String currentPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(currentPermission));
                         } else {
-                            email.addArgument(null);
+                            System.out.println("No previous permission found for " + event.getBitstream().getName());
+                            break;
+                            // do not send email when there is no previous permission 
+                            // because it means permissions are being set for the first time
                         }
                         email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
                         email.sendHTML();
@@ -655,10 +659,10 @@ public class Mailing {
         }
     }
 
-    private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event)
+    private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event, Bitstream bitstream)
             throws ParseException {
         Deque<String> permissions = new ArrayDeque<String>();
-        for (final MetadataValue bitstreamMetadata : event.getBitstream().getMetadata()) {
+        for (final MetadataValue bitstreamMetadata : bitstream.getMetadata()) {
             if (bitstreamMetadata.getMetadataField().getElement().equals("bitstream")
                     && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
                 final String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
@@ -681,7 +685,7 @@ public class Mailing {
         String itemLicense = event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "rights",
                 "license", Item.ANY);
         String bitstreamPermission = null;
-        Deque<String> bitstreamPermissions = getPreviousBitstreamPermissionText(event);
+        Deque<String> bitstreamPermissions = getPreviousBitstreamPermissionText(event, event.getBitstream());
         if (bitstreamPermissions.size() > 0) {
             bitstreamPermission = bitstreamPermissions.pop();
         }
