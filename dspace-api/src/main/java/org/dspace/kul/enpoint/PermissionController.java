@@ -7,8 +7,6 @@
  */
 package org.dspace.kul.enpoint;
 
-import static org.dspace.core.Constants.GROUP;
-
 import java.sql.SQLException;
 import java.util.UUID;
 
@@ -21,22 +19,16 @@ import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.core.Context;
-import org.dspace.eperson.EPerson;
 import org.dspace.eperson.service.GroupService;
 import org.dspace.kul.consumer.KULConsumer;
-import org.dspace.services.factory.DSpaceServicesFactory;
-import org.dspace.services.model.Request;
 import org.dspace.web.ContextUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.dspace.content.Bitstream;
 import org.dspace.content.DCDate;
 import org.dspace.eperson.Group;
