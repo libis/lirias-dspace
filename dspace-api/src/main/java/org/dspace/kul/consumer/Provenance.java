@@ -216,11 +216,10 @@ public class Provenance {
         final String newPermission = getBitstreamPermissionText(event, event.getBitstream());
         final String previousPermission = getPreviousBitstreamPermissionText(event.getCtx(), event.getBitstream());
 
-        if (!newPermission.equals(previousPermission)) {
+        if (previousPermission != null && !newPermission.equals(previousPermission)) {
             // If permission is first or has changed: write to bitstream metadata
             // (dc.bitstream.permissions)
             updateBitstreamPermissionMetadata(event, event.getBitstream(), previousPermission, newPermission);
-            if (previousPermission != null) {
                 // If permission is changing and not first: add message to item provenance
                 // metadata
                 final String message = MessageFormat.format(
@@ -233,7 +232,6 @@ public class Provenance {
                         previousPermission,
                         newPermission);
                 return message;
-            }
         }
         return null;
     }
@@ -241,7 +239,7 @@ public class Provenance {
     private static void updateBitstreamPermissionMetadata(KULEvent event, Bitstream bitstream,
             String previousPermission, String newPermission) throws Exception {
         System.out.println(
-                "Writing new permission to bitstream metadata for " + bitstream.getName() + " : " + newPermission
+                "Provenance consumer writing new permission to bitstream metadata for " + bitstream.getName() + " : " + newPermission
                         + " (Previous permission: " + previousPermission + ")");
         event.getServices().bitstreamService.addMetadata(event.getCtx(), bitstream, "dc", "bitstream",
                 "permissions", "en",
