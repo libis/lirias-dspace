@@ -76,6 +76,9 @@ public class PermissionController {
         Context context = ContextUtil.obtainContext(request);
         System.out.println("GET bitstreamID: " + bitstreamID);
         System.out.println("GET isAdmin: " + authorizeService.isAdmin(context));
+        if (!authorizeService.isAdmin(context)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         Bitstream bitstream = bitstreamService.find(context, bitstreamID);
         return new ResponseEntity<>(getBitstreamPermission(context, bitstream), HttpStatus.OK);
     }
@@ -87,6 +90,9 @@ public class PermissionController {
         Context context = ContextUtil.obtainContext(request);
         System.out.println("POST bitstream: " + bitstreamID);
         System.out.println("POST isAdmin: " + authorizeService.isAdmin(context));
+        if (!authorizeService.isAdmin(context)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         Bitstream bitstream = bitstreamService.find(context, bitstreamID);
         try {
             setBitstreamPermission(context, bitstream, permission);
@@ -121,7 +127,7 @@ public class PermissionController {
         }
         result.setPermission(permission);
         if ("EMBARGO".equalsIgnoreCase(permission) && null != startDate) {
-            result.setEmbargoEndDate(startDate.getDate(), startDate.getMonth(), startDate.getYear()+1900);
+            result.setEmbargoEndDate(startDate.getDate(), startDate.getMonth(), startDate.getYear() + 1900);
         }
 
         return result;
@@ -235,7 +241,7 @@ public class PermissionController {
                     break;
                 } // no year: invalid
                 ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
-                rp.setStartDate(new Date((int) endDateYear-1900, (int) endDateMonth, (int) endDateDay));
+                rp.setStartDate(new Date((int) endDateYear - 1900, (int) endDateMonth, (int) endDateDay));
                 policiesToAdd.add(rp);
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
