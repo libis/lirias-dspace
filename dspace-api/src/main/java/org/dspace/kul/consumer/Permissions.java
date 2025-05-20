@@ -91,7 +91,7 @@ public class Permissions {
         // unnecessary emails on deposit
         if (event.getBitstream() != null) {
             System.out.println(
-                "Writing new permission to bitstream metadata for " + event.getBitstream() + " : " + permission);
+                "Permission consumer writing new permission to bitstream metadata for " + event.getBitstream().getName() + " : " + permission);
 
             event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
                     "bitstream",
@@ -102,7 +102,7 @@ public class Permissions {
         } else {
             for (final Bitstream b : event.getBitstreams()) {
             System.out.println(
-                "Writing new permission to bitstream metadata for " + b + " : " + permission);
+                "Permission consumer writing new permission to bitstream metadata for :" + b.getName() + " : " + permission);
 
                 event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
                         "bitstream",
