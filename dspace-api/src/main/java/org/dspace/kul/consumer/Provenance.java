@@ -24,23 +24,43 @@ public class Provenance {
         String message = null;
         switch (event.getConsumeCaseEnum()) {
             case REDEPOSIT: {
-                message = redepositCase(event);
+                try {
+                    message = redepositCase(event);
+                } catch (Exception e) {
+                    System.err.println(e);
+                }
                 break;
             }
             case ADD_VIA_UI: {
-                message = dspaceAddCase(event);
+                try {
+                    message = dspaceAddCase(event);
+                } catch (Exception e) {
+                    System.err.println(e);
+                }
                 break;
             }
             case DEPOSIT: {
-                message = depositCase(event);
+                try {
+                    message = depositCase(event);
+                } catch (Exception e) {
+                    System.err.println(e);
+                }
                 break;
             }
             case REMOVE: {
-                message = removeCase(event);
+                try {
+                    message = removeCase(event);
+                } catch (Exception e) {
+                    System.err.println(e);
+                }
                 break;
             }
             case EDIT_PERMISSION: {
-                message = editBitstreamPermissionCase(event);
+                try {
+                    message = editBitstreamPermissionCase(event);
+                } catch (Exception e) {
+                    System.err.println(e);
+                }
                 break;
             }
             default: {
