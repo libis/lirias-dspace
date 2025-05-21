@@ -144,6 +144,7 @@ public class PermissionController {
     }
 
     private void removePolicy(Context context, Bitstream bitstream, String groupName) {
+        System.out.println("removing policies: controller");
         Group group = null;
         try {
             group = groupService.findByName(context, groupName);
