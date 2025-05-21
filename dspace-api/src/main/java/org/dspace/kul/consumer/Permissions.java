@@ -2,6 +2,9 @@ package org.dspace.kul.consumer;
 
 import java.util.ArrayList;
 import java.util.Date;
+
+import static org.dspace.core.Constants.READ;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
@@ -13,6 +16,7 @@ import org.dspace.authorize.ResourcePolicy;
 import org.dspace.content.Bitstream;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
+import org.dspace.content.MetadataValue;
 import org.dspace.core.Constants;
 import org.dspace.eperson.Group;
 
@@ -27,7 +31,36 @@ public class Permissions {
             case REDEPOSIT:
                 try {
                     System.out.println("Redeposit (permissions)");
-                    setDepositBitstreamPolicies(event);
+                    List<ResourcePolicy> policies = new ArrayList<>();
+                    policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
+                    policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+
+                    addPoliciesToBitstream(event, policies);
+
+                    if (event.getBitstream() != null) {
+                        System.out.println(
+                                "Permission consumer writing new permission to bitstream metadata for "
+                                        + event.getBitstream().getName() + " : " + "redeposit");
+
+                        event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
+                                "bitstream",
+                                "permissions", "en",
+                                DCDate.getCurrent().toDate() + ";" + "redeposit");
+
+                        event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
+                    } else {
+                        for (final Bitstream b : event.getBitstreams()) {
+                            System.out.println(
+                                    "Permission consumer writing new permission to bitstream metadata for :"
+                                            + b.getName() + " : " + "redeposit");
+
+                            event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
+                                    "bitstream",
+                                    "permissions", "en",
+                                    DCDate.getCurrent().toDate() + ";" + "redeposit");
+                            event.getServices().bitstreamService.update(event.getCtx(), b);
+                        }
+                    }
                     break;
                 } catch (Exception e) {
                     System.err.println("Redeposit (permissions): " + e);
@@ -51,7 +84,21 @@ public class Permissions {
                 break;
             }
             case EDIT_PERMISSION: {
-                break;
+                try {
+                    if (event.getBitstream() != null) {
+                        setRedepositBitstreamPolicies(event, event.getBitstream());
+                        event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
+                    } else {
+                        for (final Bitstream b : event.getBitstreams()) {
+                            setRedepositBitstreamPolicies(event, b);
+                            event.getServices().bitstreamService.update(event.getCtx(), b);
+                        }
+                    }
+                    break;
+                } catch (Exception e) {
+                    System.err.println("Deposit (permissions): " + e);
+                    break;
+                }
             }
             default: {
                 log.error("permissions for this event not implemented: " + event.getConsumeCaseEnum().name());
@@ -71,39 +118,41 @@ public class Permissions {
             permission = "INTRANET";
             // if PhD: add embargo for 1 year
             if (event.isPhd()) {
-            ResourcePolicy anonymousAccess = readForGroup(event,
-                    event.getGroupsMap().get(KULConsumer.ANONYMOUS_GROUP));
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
-            String dateIssuedString = getDateIssued(event);
-            Date dateIssued = simpleDateFormat.parse(dateIssuedString);
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(dateIssued);
-            cal.add(Calendar.YEAR, 1);
-            Date dateEmbargoEnd = cal.getTime();
-            anonymousAccess.setStartDate(dateEmbargoEnd);
-            policies.add(anonymousAccess);
-            permission = "EMBARGO";
+                ResourcePolicy anonymousAccess = readForGroup(event,
+                        event.getGroupsMap().get(KULConsumer.ANONYMOUS_GROUP));
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+                String dateIssuedString = getDateIssued(event);
+                Date dateIssued = simpleDateFormat.parse(dateIssuedString);
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(dateIssued);
+                cal.add(Calendar.YEAR, 1);
+                Date dateEmbargoEnd = cal.getTime();
+                anonymousAccess.setStartDate(dateEmbargoEnd);
+                policies.add(anonymousAccess);
+                permission = "EMBARGO";
             }
         }
         addPoliciesToBitstream(event, policies);
-
+        
         // write first permission after first three policies are added to avoid
         // unnecessary emails on deposit
         if (event.getBitstream() != null) {
             System.out.println(
-                "Permission consumer writing new permission to bitstream metadata for " + event.getBitstream().getName() + " : " + permission);
+                    "Deposit case: Permission consumer writing new permission to bitstream metadata for "
+                            + event.getBitstream().getName() + " : " + permission);
 
             event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
                     "bitstream",
                     "permissions", "en",
                     DCDate.getCurrent().toDate() + ";" + permission);
-                    
+
             event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
         } else {
             for (final Bitstream b : event.getBitstreams()) {
-            System.out.println(
-                "Permission consumer writing new permission to bitstream metadata for :" + b.getName() + " : " + permission);
-
+                System.out.println(
+                        "Deposit case: Permission consumer writing new permission to bitstream metadata for :"
+                                + b.getName() + " : "
+                                + permission);
                 event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
                         "bitstream",
                         "permissions", "en",
@@ -112,17 +161,75 @@ public class Permissions {
             }
         }
 
+    }
+
+    private static boolean isRedeposit(final Bitstream bitstream) {
+        for (final MetadataValue bitstreamMetadata : bitstream.getMetadata()) {
+            if (bitstreamMetadata.getMetadataField().getElement().equals("bitstream")
+                    && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
+                final String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
+                if (temp.length == 2) {
+                    final String permission = temp[1];
+                    if ("redeposit".equalsIgnoreCase(permission)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static void setRedepositBitstreamPolicies(final KULEvent event, Bitstream bitstream) throws Exception {
+        if (!isRedeposit(bitstream)) {
+            return;
+        }
+        event.getServices().bitstreamService.clearMetadata(event.getCtx(), bitstream, "dc", "bitstream", "permissions",
+                Item.ANY);
+        String permission = "INTRANET";
+        List<ResourcePolicy> policies = new ArrayList<>();
+        policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
+        policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+
+        addPoliciesToBitstream(event, policies);
+
+        // write first permission after first three policies are added to avoid
+        // unnecessary emails on deposit
+        if (event.getBitstream() != null) {
+            System.out.println(
+                    "Redeposit case: Permission consumer writing new permission to bitstream metadata for "
+                            + event.getBitstream().getName() + " : " + permission);
+
+            event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
+                    "bitstream",
+                    "permissions", "en",
+                    DCDate.getCurrent().toDate() + ";" + permission);
+
+            event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
+        } else {
+            for (final Bitstream b : event.getBitstreams()) {
+                // System.out.println(
+                // "Permission consumer writing new permission to bitstream metadata for :" +
+                // b.getName() + " : " + permission);
+
+                event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
+                        "bitstream",
+                        "permissions", "en",
+                        DCDate.getCurrent().toDate() + ";" + permission);
+
+                event.getServices().bitstreamService.update(event.getCtx(), b);
+            }
+        }
 
     }
 
     private static void addPoliciesToBitstream(final KULEvent event, List<ResourcePolicy> policies) throws Exception {
         if (policies != null) {
             if (event.getBitstream() != null) {
-                System.out.println("Adding policy to bitstream (" + event.getBitstream().getName() + ")"); 
+                System.out.println("Adding policy to bitstream (" + event.getBitstream().getName() + ")");
                 changeBitstreamPolicies(event, event.getBitstream(), policies);
             } else {
                 for (final Bitstream b : event.getBitstreams()) {
-                    System.out.println("Adding policy to bitstream (" + b + ")"); 
+                    System.out.println("Adding policy to bitstream (" + b + ")");
                     changeBitstreamPolicies(event, b, policies);
                 }
             }
@@ -131,6 +238,7 @@ public class Permissions {
 
     private static void changeBitstreamPolicies(final KULEvent event, final Bitstream bitstream,
             final List<ResourcePolicy> toAdd) throws Exception {
+        System.out.println("removing policies:  Permissions");
         for (final Group group : event.getGroupsMap().values()) {
             event.getServices().authorizeService.removeGroupPolicies(event.getCtx(), bitstream, group);
         }

@@ -115,9 +115,11 @@ public class Mailing {
 
                         Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
                                 event.getBitstream());
-                        if (permissionHistory.size() > 0) {
+                        if (permissionHistory.size() > 0
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.getLast())) {
                             String permission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(permission));
+
                         } else {
                             email.addArgument(null);
                         }
@@ -231,7 +233,8 @@ public class Mailing {
                                         null, Item.ANY));
                         Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
                                 event.getBitstream());
-                        if (permissionHistory.size() > 0) {
+                        if (permissionHistory.size() > 0
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.getLast())) {
                             final String previousPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(previousPermission));
                         } else {
@@ -239,7 +242,8 @@ public class Mailing {
                             break;
                             // do not send email when no current permission found
                         }
-                        if (permissionHistory.size() > 0) {
+                        if (permissionHistory.size() > 0
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.getLast())) {
                             final String currentPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(currentPermission));
                         } else {
@@ -395,7 +399,7 @@ public class Mailing {
 
     }
 
-    private static void sendEmailRedepositOA(KULEvent event, Bitstream bitstream) throws Exception{
+    private static void sendEmailRedepositOA(KULEvent event, Bitstream bitstream) throws Exception {
 
         final HashMap<String, String> itemMetadata = getItemMetadataMap(event.getItem(), bitstream);
         if (senderEmail == null) {
@@ -720,7 +724,10 @@ public class Mailing {
         } else {
             bitstreamPermissions = getPreviousBitstreamPermissionText(event, event.getBitstreams().get(0));
         }
-        if (bitstreamPermissions.size() > 0) {
+        if (bitstreamPermissions.size() > 0 && "redeposit".equalsIgnoreCase(bitstreamPermissions.getLast())) {
+            return "Permanent embargo (intranet only)";
+        }
+        if (bitstreamPermissions.size() > 0 && !"redeposit".equalsIgnoreCase(bitstreamPermissions.getLast())) {
             bitstreamPermission = bitstreamPermissions.pop();
         }
         if (itemLicense == null || itemLicense.isBlank()) {
