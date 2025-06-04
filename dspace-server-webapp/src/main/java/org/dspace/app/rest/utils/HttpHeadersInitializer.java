@@ -166,7 +166,7 @@ public class HttpHeadersInitializer {
         httpHeaders.put(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
                         Collections.singletonList(HttpHeaders.ACCEPT_RANGES));
         httpHeaders.put(CONTENT_DISPOSITION, Collections.singletonList(String.format(CONTENT_DISPOSITION_FORMAT,
-                                                                                     CONTENT_DISPOSITION_ATTACHMENT,
+                                                                                     disposition,
                                                                                      encodeText(fileName))));
         log.debug("Content-Disposition : {}", disposition);
 
