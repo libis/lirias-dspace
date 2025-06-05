@@ -128,7 +128,7 @@ public class BitstreamRestController {
                     shibURL = serverUrl + shibURL;
                     shibURL = shibURL.replace("http://", "https://");
                 }
-                final String redirectUrl = serverUrl + "/bitstreams/" + uuid + "/download";
+                final String redirectUrl = serverUrl + "/server/api/core/bitstreams/" + uuid + "/content";
                 final String returnURL = serverUrl + "/server/api/authn/shibboleth?redirectUrl=" + redirectUrl;
                 shibURL += "?target=" + URLEncoder.encode(returnURL, "UTF-8");
                 response.sendRedirect(response.encodeRedirectURL(shibURL));
