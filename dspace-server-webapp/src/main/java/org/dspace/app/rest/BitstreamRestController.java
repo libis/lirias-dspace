@@ -51,7 +51,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -142,8 +141,7 @@ public class BitstreamRestController {
 
                 // reset the CSRF token just in case when user already has an active session
                 csrfTokenRepository.saveToken(null, request, response);
-                final CsrfToken newToken = csrfTokenRepository.generateToken(request);
-                csrfTokenRepository.saveToken(newToken, request, response);
+                //csrfTokenRepository.saveToken(csrfTokenRepository.generateToken(request), request, response);
                 return null;
             }
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
