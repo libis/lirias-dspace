@@ -45,11 +45,14 @@ import org.dspace.services.ConfigurationService;
 import org.dspace.services.EventService;
 import org.dspace.usage.UsageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -105,6 +108,10 @@ public class BitstreamRestController {
     @Autowired
     private AuthorizeService authorizeService;
 
+    @Lazy
+    @Autowired
+    private CsrfTokenRepository csrfTokenRepository;
+
     @RequestMapping( method = {RequestMethod.GET, RequestMethod.HEAD}, value = "content")
     public ResponseEntity retrieve(@PathVariable UUID uuid, HttpServletResponse response,
                          HttpServletRequest request) throws IOException, SQLException, AuthorizeException {
@@ -132,6 +139,11 @@ public class BitstreamRestController {
                 final String returnURL = serverUrl + "/server/api/authn/shibboleth?redirectUrl=" + redirectUrl;
                 shibURL += "?target=" + URLEncoder.encode(returnURL, "UTF-8");
                 response.sendRedirect(response.encodeRedirectURL(shibURL));
+
+                // reset the CSFR token just in case when user already has an active session
+                csrfTokenRepository.saveToken(null, request, response);
+                final CsrfToken newToken = csrfTokenRepository.generateToken(request);
+                csrfTokenRepository.saveToken(newToken, request, response);
                 return null;
             }
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
