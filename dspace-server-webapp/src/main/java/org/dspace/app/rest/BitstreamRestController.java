@@ -140,7 +140,7 @@ public class BitstreamRestController {
                 shibURL += "?target=" + URLEncoder.encode(returnURL, "UTF-8");
                 response.sendRedirect(response.encodeRedirectURL(shibURL));
 
-                // reset the CSFR token just in case when user already has an active session
+                // reset the CSRF token just in case when user already has an active session
                 csrfTokenRepository.saveToken(null, request, response);
                 final CsrfToken newToken = csrfTokenRepository.generateToken(request);
                 csrfTokenRepository.saveToken(newToken, request, response);
