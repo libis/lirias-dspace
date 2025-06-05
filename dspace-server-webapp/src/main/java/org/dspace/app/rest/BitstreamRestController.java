@@ -51,6 +51,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -138,10 +139,6 @@ public class BitstreamRestController {
                 final String returnURL = serverUrl + "/server/api/authn/shibboleth?redirectUrl=" + redirectUrl;
                 shibURL += "?target=" + URLEncoder.encode(returnURL, "UTF-8");
                 response.sendRedirect(response.encodeRedirectURL(shibURL));
-
-                // reset the CSRF token just in case when user already has an active session
-                csrfTokenRepository.saveToken(null, request, response);
-                //csrfTokenRepository.saveToken(csrfTokenRepository.generateToken(request), request, response);
                 return null;
             }
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
