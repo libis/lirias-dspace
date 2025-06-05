@@ -12,6 +12,8 @@ import static org.dspace.app.rest.utils.RegexUtils.REGEX_REQUESTMAPPING_IDENTIFI
 import static org.springframework.web.bind.annotation.RequestMethod.PUT;
 
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
@@ -30,10 +32,12 @@ import org.dspace.app.rest.utils.ContextUtil;
 import org.dspace.app.rest.utils.HttpHeadersInitializer;
 import org.dspace.app.rest.utils.Utils;
 import org.dspace.authorize.AuthorizeException;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.BitstreamFormat;
 import org.dspace.content.service.BitstreamFormatService;
 import org.dspace.content.service.BitstreamService;
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.disseminate.service.CitationDocumentService;
 import org.dspace.eperson.EPerson;
@@ -98,7 +102,9 @@ public class BitstreamRestController {
     @Autowired
     Utils utils;
 
-    @PreAuthorize("hasPermission(#uuid, 'BITSTREAM', 'READ')")
+    @Autowired
+    private AuthorizeService authorizeService;
+
     @RequestMapping( method = {RequestMethod.GET, RequestMethod.HEAD}, value = "content")
     public ResponseEntity retrieve(@PathVariable UUID uuid, HttpServletResponse response,
                          HttpServletRequest request) throws IOException, SQLException, AuthorizeException {
@@ -111,6 +117,24 @@ public class BitstreamRestController {
 
         if (bit == null) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return null;
+        }
+
+        if (!authorizeService.authorizeActionBoolean(context, bit, Constants.READ)) {
+            if (currentUser == null) {
+                final String serverUrl = "https://" + new URL(configurationService.getProperty("dspace.server.url")).getHost();
+                String shibURL = configurationService.getProperty("authentication-shibboleth.lazysession.loginurl", "/Shibboleth.sso/Login");
+                if (shibURL.startsWith("/")) {
+                    shibURL = serverUrl + shibURL;
+                    shibURL = shibURL.replace("http://", "https://");
+                }
+                final String redirectUrl = serverUrl + "/bitstreams/" + uuid + "/download";
+                final String returnURL = serverUrl + "/server/api/authn/shibboleth?redirectUrl=" + redirectUrl;
+                shibURL += "?target=" + URLEncoder.encode(returnURL, "UTF-8");
+                response.sendRedirect(response.encodeRedirectURL(shibURL));
+                return null;
+            }
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
             return null;
         }
 
