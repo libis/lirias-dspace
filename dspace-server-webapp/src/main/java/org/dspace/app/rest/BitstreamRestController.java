@@ -145,10 +145,6 @@ public class BitstreamRestController {
             return null;
         }
 
-        if (currentUser == null) {
-            response.sendRedirect(response.encodeRedirectURL("https://kuleuven.limo.libis.be"));
-        }
-
         Long lastModified = bitstreamService.getLastModified(bit);
         BitstreamFormat format = bit.getFormat(context);
         String mimetype = format.getMIMEType();
