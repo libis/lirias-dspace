@@ -101,7 +101,8 @@ public class Permissions {
                 }
             }
             default: {
-                log.error("Permission consumer: permissions for this event not implemented: " + event.getConsumeCaseEnum().name());
+                log.error("Permission consumer: permissions for this event not implemented: "
+                        + event.getConsumeCaseEnum().name());
                 break;
             }
         }
@@ -133,7 +134,7 @@ public class Permissions {
             }
         }
         addPoliciesToBitstream(event, policies);
-        
+
         // write first permission after first three policies are added to avoid
         // unnecessary emails on deposit
         if (event.getBitstream() != null) {
@@ -181,39 +182,42 @@ public class Permissions {
 
     private static ArrayList<String> getBitstreamsArray(final KULEvent event) {
         ArrayList<String> bitstreams = new ArrayList();
-                if (event.getBitstream() != null) {
-                    bitstreams.add(event.getBitstream().getInternalId());
-                } else {
-                    for (final Bitstream b : event.getBitstreams()) {
-                    bitstreams.add(b.getInternalId());
-                    }
-                }
-                return bitstreams;
+        if (event.getBitstream() != null) {
+            bitstreams.add(event.getBitstream().getInternalId());
+        } else {
+            for (final Bitstream b : event.getBitstreams()) {
+                bitstreams.add(b.getInternalId());
+            }
+        }
+        return bitstreams;
     }
 
     private static String getPreviousPermission(final KULEvent event) {
         final ArrayList<String> newBitstreams = getBitstreamsArray(event);
         final Item item = event.getItem();
         final List<MetadataValue> metadataValues = item.getMetadata();
-        String provenance = null;
         String result = null;
         for (MetadataValue metadataValue : metadataValues) {
             if ("provenance".equals(metadataValue.getMetadataField().getQualifier())) {
-                provenance = metadataValue.getValue();
-            }
-        }
-        if (provenance == null) {
-            return null;
-        }
-        for (String filePermission : provenance.split(" - ")) {
-            String[] splitPermission = filePermission.split("File permission: ");
-            if (splitPermission.length==2&&newBitstreams.stream().noneMatch(x->splitPermission[0].contains(x))) {
-                result = splitPermission[1];
+                final String provenance = metadataValue.getValue();
+                if (provenance.contains("Bitstream added") || provenance.contains("Bitstream submitted")) {
+                    for (String filePermission : provenance.split(" - ")) {
+                        String[] splitPermission = filePermission.split("File permission: ");
+                        if (splitPermission.length == 2
+                                && newBitstreams.stream().noneMatch(x -> splitPermission[0].contains(x))) {
+                            result = splitPermission[1];
+                        }
+                    }
+                } else if (provenance.contains("The permissions of bitstream")
+                        && newBitstreams.stream().noneMatch(x -> provenance.contains(x))) {
+                    String[] splitPermission = provenance.split(" to ");
+                    result = splitPermission[1];
+                }
+
             }
         }
         return result;
     }
-
 
     private static void setRedepositBitstreamPolicies(final KULEvent event, Bitstream bitstream) throws Exception {
         if (!isRedeposit(bitstream)) {
