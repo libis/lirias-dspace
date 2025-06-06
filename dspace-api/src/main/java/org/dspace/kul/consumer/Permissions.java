@@ -179,6 +179,42 @@ public class Permissions {
         return false;
     }
 
+    private static ArrayList<String> getBitstreamsArray(final KULEvent event) {
+        ArrayList<String> bitstreams = new ArrayList();
+                if (event.getBitstream() != null) {
+                    bitstreams.add(event.getBitstream().getInternalId());
+                } else {
+                    for (final Bitstream b : event.getBitstreams()) {
+                    bitstreams.add(b.getInternalId());
+                    }
+                }
+                return bitstreams;
+    }
+
+    private static String getPreviousPermission(final KULEvent event) {
+        final ArrayList<String> newBitstreams = getBitstreamsArray(event);
+        final Item item = event.getItem();
+        final List<MetadataValue> metadataValues = item.getMetadata();
+        String provenance = null;
+        String result = null;
+        for (MetadataValue metadataValue : metadataValues) {
+            if ("provenance".equals(metadataValue.getMetadataField().getQualifier())) {
+                provenance = metadataValue.getValue();
+            }
+        }
+        if (provenance == null) {
+            return null;
+        }
+        for (String filePermission : provenance.split(" - ")) {
+            String[] splitPermission = filePermission.split("File permission: ");
+            if (splitPermission.length==2&&newBitstreams.stream().noneMatch(x->splitPermission[0].contains(x))) {
+                result = splitPermission[1];
+            }
+        }
+        return result;
+    }
+
+
     private static void setRedepositBitstreamPolicies(final KULEvent event, Bitstream bitstream) throws Exception {
         if (!isRedeposit(bitstream)) {
             return;
@@ -208,8 +244,8 @@ public class Permissions {
         } else {
             for (final Bitstream b : event.getBitstreams()) {
                 System.out.println(
-                "Permission consumer/redeposit: writing new permission to bitstream metadata for :" +
-                b.getName() + " : " + permission);
+                        "Permission consumer/redeposit: writing new permission to bitstream metadata for :" +
+                                b.getName() + " : " + permission);
 
                 event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
                         "bitstream",
@@ -225,7 +261,8 @@ public class Permissions {
     private static void addPoliciesToBitstream(final KULEvent event, List<ResourcePolicy> policies) throws Exception {
         if (policies != null) {
             if (event.getBitstream() != null) {
-                System.out.println("Permission consumer: adding policy to bitstream (" + event.getBitstream().getName() + ")");
+                System.out.println(
+                        "Permission consumer: adding policy to bitstream (" + event.getBitstream().getName() + ")");
                 changeBitstreamPolicies(event, event.getBitstream(), policies);
             } else {
                 for (final Bitstream b : event.getBitstreams()) {
