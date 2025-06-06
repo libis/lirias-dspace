@@ -43,7 +43,7 @@ public class KULConsumer implements Consumer {
     @Override
     public void consume(final Context ctx, final Event event) throws Exception {
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
-            System.out.println("Item install: " + event.getSubjectID());
+            System.out.println("KUL Consumer/consume: Item install: " + event.getSubjectID());
             queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
         } else if (Event.ADD == event.getEventType()
                 && event.getSubjectType() == Constants.BUNDLE) {
@@ -66,7 +66,7 @@ public class KULConsumer implements Consumer {
                 queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
             }
         } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
-            System.out.println("modify bitstream case");
+            System.out.println("KUL Consumer/consume: modify bitstream case");
             ((Bitstream) event.getSubject(ctx)).getBundles().stream()
                     .filter(bundle -> bundle.getName().toString().equals("ORIGINAL"))
                     .forEach(bundle -> bundle.getItems()
@@ -76,7 +76,7 @@ public class KULConsumer implements Consumer {
                                 }
                             }));
         } else {
-            System.out.println("Unprocessed event: " + event.toString());
+            System.out.println("KUL Consumer/consume: Unprocessed event: " + event.toString());
         }
     }
 
@@ -105,7 +105,7 @@ public class KULConsumer implements Consumer {
             ConsumeCaseEnum caseEnum = null;
             switch (qi.getEventType()) {
                 case Event.ADD:
-                    System.out.println("Redeposit or add via DSpace UI case");
+                    System.out.println("KUL Consumer: Redeposit or add via DSpace UI case");
                     if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
                         caseEnum = ConsumeCaseEnum.REDEPOSIT;
                     } else {
@@ -113,19 +113,19 @@ public class KULConsumer implements Consumer {
                     }
                     break;
                 case Event.INSTALL:
-                    System.out.println("Deposit case");
+                    System.out.println("KUL Consumer: Deposit case");
                     caseEnum = ConsumeCaseEnum.DEPOSIT;
                     break;
                 case Event.DELETE_BITSTREAM:
-                    System.out.println("Remove case");
+                    System.out.println("KUL Consumer: Remove case");
                     caseEnum = ConsumeCaseEnum.REMOVE;
                     break;
                 case Event.MODIFY:
-                    System.out.println("Edit permission case");
+                    System.out.println("KUL Consumer: Edit permission case");
                     caseEnum = ConsumeCaseEnum.EDIT_PERMISSION;
                     break;
                 default:
-                    log.error("event consume not implemented: " + qi.getEventType());
+                    log.error("KUL Consumer: event consume not implemented: " + qi.getEventType());
                     break;
             }
             if (caseEnum != null) {

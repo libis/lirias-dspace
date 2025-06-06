@@ -66,8 +66,7 @@ public class PermissionController {
     public ResponseEntity<BitstreamPermission> get(HttpServletRequest request, @PathVariable UUID bitstreamID)
             throws SQLException, AuthorizeException {
         Context context = ContextUtil.obtainContext(request);
-        System.out.println("GET bitstreamID: " + bitstreamID);
-        System.out.println("GET isAdmin: " + authorizeService.isAdmin(context));
+        System.out.println("Permission Controller GET bitstreamID: " + bitstreamID + " isAdmin: " + authorizeService.isAdmin(context));
         if (!authorizeService.isAdmin(context)) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
@@ -80,8 +79,7 @@ public class PermissionController {
             @RequestBody BitstreamPermission permission)
             throws SQLException, AuthorizeException {
         Context context = ContextUtil.obtainContext(request);
-        System.out.println("POST bitstream: " + bitstreamID);
-        System.out.println("POST isAdmin: " + authorizeService.isAdmin(context));
+        System.out.println("Permission Controller POST bitstreamID: " + bitstreamID + " isAdmin: " + authorizeService.isAdmin(context));
         if (!authorizeService.isAdmin(context)) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
@@ -144,7 +142,7 @@ public class PermissionController {
     }
 
     private void removePolicy(Context context, Bitstream bitstream, String groupName) {
-        System.out.println("removing policies: controller");
+        System.out.println("Permission controller: Removing policies");
         Group group = null;
         try {
             group = groupService.findByName(context, groupName);
@@ -154,12 +152,12 @@ public class PermissionController {
         if (null != group) {
             try {
                 authorizeService.removeGroupPolicies(context, bitstream, group);
-                System.out.println("Removing policy: " + group.getName());
+                System.out.println("Permission controller: Removing policy " + group.getName());
             } catch (Exception e) {
                 System.err.println(e);
             }
         } else {
-            System.err.println("Group " + groupName + " not found.");
+            System.err.println("Permission controller: Group " + groupName + " not found.");
         }
 
     }
@@ -170,7 +168,7 @@ public class PermissionController {
             removePolicy(context, bitstream, groupName);
         }
         if (!toAdd.isEmpty()) {
-            System.out.println("Adding policies: " + toAdd.toString());
+            System.out.println("Permission controller: Adding policies: " + toAdd.toString());
             try {
                 authorizeService.addPolicies(context, toAdd, bitstream);
             } catch (Exception e) {
@@ -183,8 +181,8 @@ public class PermissionController {
 
     private void setBitstreamPermission(Context context, Bitstream bitstream, BitstreamPermission permission)
             throws SQLException, AuthorizeException {
-        System.out.println("Setting permission to " + permission.getPermission());
-        System.out.println("Embargo end date (if applicable) " + permission.getEmbargoEndDate());
+        System.out.println("Permission controller: Setting permission to " + permission.getPermission());
+        System.out.println("Permission controller: Embargo end date (if applicable) " + permission.getEmbargoEndDate());
         List<ResourcePolicy> policiesToAdd;
 
         switch (permission.getPermission()) {
@@ -194,13 +192,14 @@ public class PermissionController {
                 break;
             } // remove all, add ADMINS_LOCAL_GROUP
             case "INTRANET": {
-                System.out.println("case intranet");
+                System.out.println("Permission controller: case intranet");
                 policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP
             case "PUBLIC": {
+                System.out.println("Permission controller: case public");
                 policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
@@ -211,13 +210,13 @@ public class PermissionController {
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP, ANONYMOUS_GROUP
               // (startDate: now)
             case "EMBARGO": {
-                System.out.println("case embargo");
+                System.out.println("Permission controller: case embargo");
                 policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 System.out.println(permission);
                 System.out.println(permission.getEmbargoEndDate());
                 if (null == permission.getEmbargoEndDate()) {
-                    System.err.println("No end date entered for embargo.");
+                    System.err.println("Permission controller: No end date entered for embargo.");
                     break; // no end date specified
                 }
                 Number endDateDay = 31; // default: last day of month
@@ -230,7 +229,7 @@ public class PermissionController {
                 } // set month if present
                 Number endDateYear = permission.getEmbargoEndDate().year;
                 if (null == endDateYear) {
-                    System.err.println("No end date year entered for embargo.");
+                    System.err.println("Permission controller: No end date year entered for embargo.");
                     break;
                 } // no year: invalid
                 ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
