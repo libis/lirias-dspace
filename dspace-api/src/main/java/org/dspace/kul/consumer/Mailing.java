@@ -287,37 +287,15 @@ public class Mailing {
 
             }
             case ADD_VIA_UI: {
+                System.out.println("OA emails: Add from UI case");
                 try {
-                    System.out.println("OA emails: Add from UI case");
-                    final HashMap<String, String> itemMetadata = getItemMetadataMap(event.getItem(),
-                            event.getBitstream());
-                    if (senderEmail == null) {
-                        System.out.println("No email sender set.");
-                        return;
+                    if (event.getBitstream() != null) {
+                        sendEmailAddViaUI(event, event.getBitstream());
+                    } else {
+                        for (Bitstream bitstream : event.getBitstreams()) {
+                            sendEmailAddViaUI(event, bitstream);
+                        }
                     }
-                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui_oa");
-                    if (email == null) {
-                        break;
-                    }
-                    email.addRecipient(senderEmail);
-                    email.setReplyTo(senderEmail);
-                    String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor",
-                            "Filename",
-                            "BitstreamID" };
-                    String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
-                            "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
-                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
-                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
-                    String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
-                    String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
-                            "{border: 1px;}");
-                    email.addArgument(itemMetadata.get("Limo URL"));
-                    email.addArgument(itemMetadata.get("DSpace URL"));
-                    email.addArgument(itemMetadata.get("Title"));
-                    email.addArgument(basicMetadata);
-                    email.addArgument(metadataForOA);
-                    email.addArgument(logbookTable);
-                    email.sendHTML();
                     break;
                 } catch (Exception e) {
                     System.err.println("OA emails: " + e);
@@ -367,8 +345,60 @@ public class Mailing {
         return email;
     }
 
+    private static void sendEmailAddViaUI(KULEvent event, Bitstream bitstream) throws Exception {
+                    final HashMap<String, String> itemMetadata = getItemMetadataMap(event, event.getItem(),
+                            event.getBitstream());
+                    if (senderEmail == null) {
+                        System.out.println("No email sender set.");
+                        return;
+                    }
+                    Email email = readEmailTemplate(event.getCtx().getCurrentLocale(), "add_bitstream_via_ui_oa");
+                    if (email == null) {
+                        return;
+                    }
+                    email.addRecipient(senderEmail);
+                    email.setReplyTo(senderEmail);
+                    String[] basicMetadataFields = { 
+                        "Title",
+                        "Limo URL",
+                        "DSpace URL",
+                        "Author", 
+                        "Supervisor", 
+                        "Cosupervisor", 
+                        "First Depositor",
+                        "Filename",
+                        "BitstreamID", 
+                        "Accessibility" };
+                    String[] metadataForOAFields = { 
+                        "Item Access License",
+                        "Item Publisher License", 
+                        "Bitstream Version", 
+                        "Date Issued", 
+                        "Type",
+                        "Item Status",
+                        "Naam Tijdschrift", 
+                        "Naam Uitgever", 
+                        "DOI", 
+                        "Bitstream File Extension" };
+                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                    String basicMetadata = formatMetadataAsHTML(itemMetadata, basicMetadataFields);
+                    String metadataForOA = formatMetadataAsHTML(itemMetadata, metadataForOAFields);
+                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+
+                    email.addArgument(itemMetadata.get("Title")); 
+                    email.addArgument(itemMetadata.get("Limo URL"));
+                    email.addArgument(itemMetadata.get("DSpace URL"));
+                    email.addArgument(basicMetadata);
+                    email.addArgument(metadataForOA);
+                    email.addArgument(logbookTable);
+                    email.sendHTML();
+
+    }
+
+
+
     private static void sendEmailDepositOA(KULEvent event, Bitstream bitstream) throws Exception {
-        final HashMap<String, String> itemMetadata = getItemMetadataMap(event.getItem(), bitstream);
+        final HashMap<String, String> itemMetadata = getItemMetadataMap(event, event.getItem(), bitstream);
         if (senderEmail == null) {
             System.out.println("No email sender set.");
             return;
@@ -377,31 +407,48 @@ public class Mailing {
         if (email == null) {
             return;
         }
-        email.addRecipient(senderEmail);
-        email.setReplyTo(senderEmail);
-        String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor",
-                "Filename",
-                "BitstreamID" };
-        String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
-                "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
-        String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
-        String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
-        String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
-        String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
-                "{border: 1px;}");
-        email.addArgument(itemMetadata.get("Limo URL"));
-        email.addArgument(itemMetadata.get("DSpace URL"));
-        email.addArgument(itemMetadata.get("Title"));
-        email.addArgument(basicMetadata);
-        email.addArgument(metadataForOA);
-        email.addArgument(logbookTable);
-        email.sendHTML();
+                    email.addRecipient(senderEmail);
+                    email.setReplyTo(senderEmail);
+                    String[] basicMetadataFields = { 
+                        "Title",
+                        "Limo URL",
+                        "DSpace URL",
+                        "Author", 
+                        "Supervisor", 
+                        "Cosupervisor", 
+                        "First Depositor",
+                        "Filename",
+                        "BitstreamID", 
+                        "Accessibility" };
+                    String[] metadataForOAFields = { 
+                        "Item Access License",
+                        "Item Publisher License", 
+                        "Bitstream Version", 
+                        "Date Issued", 
+                        "Type",
+                        "Item Status",
+                        "Naam Tijdschrift", 
+                        "Naam Uitgever", 
+                        "DOI", 
+                        "Bitstream File Extension" };
+                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                    String basicMetadata = formatMetadataAsHTML(itemMetadata, basicMetadataFields);
+                    String metadataForOA = formatMetadataAsHTML(itemMetadata, metadataForOAFields);
+                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+
+                    email.addArgument(itemMetadata.get("Title")); 
+                    email.addArgument(itemMetadata.get("Limo URL"));
+                    email.addArgument(itemMetadata.get("DSpace URL"));
+                    email.addArgument(basicMetadata);
+                    email.addArgument(metadataForOA);
+                    email.addArgument(logbookTable);
+                    email.sendHTML();
 
     }
 
     private static void sendEmailRedepositOA(KULEvent event, Bitstream bitstream) throws Exception {
 
-        final HashMap<String, String> itemMetadata = getItemMetadataMap(event.getItem(), bitstream);
+        final HashMap<String, String> itemMetadata = getItemMetadataMap(event, event.getItem(), bitstream);
         if (senderEmail == null) {
             System.out.println("No email sender set.");
             return;
@@ -410,25 +457,42 @@ public class Mailing {
         if (email == null) {
             return;
         }
-        email.addRecipient(senderEmail);
-        email.setReplyTo(senderEmail);
-        String[] basicMetadataFields = { "Author", "Supervisor", "Cosupervisor", "First Depositor",
-                "Filename",
-                "BitstreamID" };
-        String[] metadataForOAFields = { "Item Access License", "Bitstream Version", "Item Status",
-                "Naam Tijdschrift", "Naam Uitgever", "DOI", "Bitstream File Extension" };
-        String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
-        String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
-        String basicMetadata = formatMetadataAsTable(itemMetadata, basicMetadataFields, true, "");
-        String metadataForOA = formatMetadataAsTable(itemMetadata, metadataForOAFields, false,
-                "{border: 1px;}");
-        email.addArgument(itemMetadata.get("Limo URL"));
-        email.addArgument(itemMetadata.get("DSpace URL"));
-        email.addArgument(itemMetadata.get("Title"));
-        email.addArgument(basicMetadata);
-        email.addArgument(metadataForOA);
-        email.addArgument(logbookTable);
-        email.sendHTML();
+                    email.addRecipient(senderEmail);
+                    email.setReplyTo(senderEmail);
+                    String[] basicMetadataFields = { 
+                        "Title",
+                        "Limo URL",
+                        "DSpace URL",
+                        "Author", 
+                        "Supervisor", 
+                        "Cosupervisor", 
+                        "First Depositor",
+                        "Filename",
+                        "BitstreamID", 
+                        "Accessibility" };
+                    String[] metadataForOAFields = { 
+                        "Item Access License",
+                        "Item Publisher License", 
+                        "Bitstream Version", 
+                        "Date Issued", 
+                        "Type",
+                        "Item Status",
+                        "Naam Tijdschrift", 
+                        "Naam Uitgever", 
+                        "DOI", 
+                        "Bitstream File Extension" };
+                    String[] logbookFields = { "Item Publisher License", "Bitstream Version", "Date Issued", "Type" };
+                    String basicMetadata = formatMetadataAsHTML(itemMetadata, basicMetadataFields);
+                    String metadataForOA = formatMetadataAsHTML(itemMetadata, metadataForOAFields);
+                    String logbookTable = formatMetadataAsTable(itemMetadata, logbookFields, false, "{border: 1px;}");
+
+                    email.addArgument(itemMetadata.get("Title")); 
+                    email.addArgument(itemMetadata.get("Limo URL"));
+                    email.addArgument(itemMetadata.get("DSpace URL"));
+                    email.addArgument(basicMetadata);
+                    email.addArgument(metadataForOA);
+                    email.addArgument(logbookTable);
+                    email.sendHTML();
 
     }
 
@@ -602,8 +666,29 @@ public class Mailing {
         return result;
 
     }
+    private static String formatMetadataAsHTML(HashMap<String, String> itemMetadata, String[] fieldsToUse) {
+        String result = "";
 
-    private static final HashMap<String, String> getItemMetadataMap(Item item, Bitstream bitstream) throws Exception {
+            for (String fieldName : fieldsToUse) {
+
+                for (int colnum = 0; colnum < 2; colnum++) {
+                    if (colnum == 0) {
+                        result += MessageFormat.format("<b>{0}: </b>", fieldName);
+                    } else {
+                        if (itemMetadata.containsKey(fieldName)) {
+                            result += MessageFormat.format("{0} </br> \n", itemMetadata.get(fieldName));
+                        } else {
+                            result += "</br> \n";
+                        }
+                    }
+                }
+            }
+
+        return result;
+
+    }
+
+    private static final HashMap<String, String> getItemMetadataMap(KULEvent event, Item item, Bitstream bitstream) throws Exception {
         HashMap result = new HashMap<String, String>();
 
         final String comment = getItemMetadataOrEmptyString(item, "dc", "deposit", "comment", Item.ANY);
@@ -617,7 +702,20 @@ public class Mailing {
                 result.put("Item Publisher License", commentPart.replace("PUBLISHER LICENCE:", "").strip());
             }
             if (commentPart.startsWith("FIRST DEPOSITOR:")) {
-                result.put("First Depositor", commentPart.replace("FIRST DEPOSITOR:", "").strip());
+                List<String> firstDepositorName =  new ArrayList<String>();
+                String firstDepositorEmail = null;
+                for (String firstDepositorPart : commentPart.replace("FIRST DEPOSITOR:", "").strip().split(" ")) {
+                    if (!firstDepositorPart.contains("@")) {
+                        firstDepositorName.add(firstDepositorPart); 
+                    } else {
+                        firstDepositorEmail = firstDepositorPart;
+                    }
+                }
+                String firstDepositor = String.join(" ", firstDepositorName);
+                if (firstDepositorEmail != null) {
+                    firstDepositor += " (" + firstDepositorEmail + ")";
+                } 
+                result.put("First Depositor", firstDepositor);
             }
         }
         final String accessLicense = getItemMetadataOrEmptyString(item, "dc", "rights", "license", Item.ANY);
@@ -629,6 +727,15 @@ public class Mailing {
                 getBitstreamMetadataOrEmptyString(bitstream, "dc", "rights", "license", Item.ANY));
         result.put("Bitstream Version",
                 getBitstreamMetadataOrEmptyString(bitstream, "dc", "description", null, Item.ANY));
+        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
+                                event.getBitstream());
+                        if (permissionHistory.size() > 0
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
+                            result.put("Accessibility", permissionHistory.pop());
+                        } else  {
+                            result.put("Accessibility", "");
+                        } 
+        
         result.put("Item Description", getItemMetadataOrEmptyString(item, "dc", "description", null, Item.ANY));
         result.put("Date Issued", getItemMetadataOrEmptyString(item, "dc", "date", "issued", Item.ANY));
         result.put("Type", getItemMetadataOrEmptyString(item, "dc", "type", "elements",
@@ -637,7 +744,11 @@ public class Mailing {
         result.put("Naam Tijdschrift", getItemMetadataOrEmptyString(item, "dc", "relation", "ispartofseries",
                 Item.ANY));
         result.put("Naam Uitgever", getItemMetadataOrEmptyString(item, "dc", "publisher", null, Item.ANY));
-        result.put("DOI", getItemMetadataOrEmptyString(item, "dc", "identifier", "doi", Item.ANY));
+        String doi = getItemMetadataOrEmptyString(item, "dc", "identifier", "doi", Item.ANY);
+        if (doi!="") {
+            doi = "https://doi.org/" + doi;
+        }
+        result.put("DOI", doi);
         result.put("Title", getItemMetadataOrEmptyString(item, "dc", "title", null, Item.ANY));
         result.put("Limo URL", getItemLimoUrl(item));
         result.put("DSpace URL", getItemDspaceUrl(item));
