@@ -116,7 +116,7 @@ public class Mailing {
                         Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
                                 event.getBitstream());
                         if (permissionHistory.size() > 0
-                                && !"redeposit".equalsIgnoreCase(permissionHistory.getLast())) {
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
                             String permission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(permission));
 
@@ -234,7 +234,7 @@ public class Mailing {
                         Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
                                 event.getBitstream());
                         if (permissionHistory.size() > 0
-                                && !"redeposit".equalsIgnoreCase(permissionHistory.getLast())) {
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
                             final String previousPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(previousPermission));
                         } else {
@@ -243,7 +243,7 @@ public class Mailing {
                             // do not send email when no current permission found
                         }
                         if (permissionHistory.size() > 0
-                                && !"redeposit".equalsIgnoreCase(permissionHistory.getLast())) {
+                                && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
                             final String currentPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(currentPermission));
                         } else {
@@ -835,10 +835,10 @@ public class Mailing {
         } else {
             bitstreamPermissions = getPreviousBitstreamPermissionText(event, event.getBitstreams().get(0));
         }
-        if (bitstreamPermissions.size() > 0 && "redeposit".equalsIgnoreCase(bitstreamPermissions.getLast())) {
+        if (bitstreamPermissions.size() > 0 && "redeposit".equalsIgnoreCase(bitstreamPermissions.peek())) {
             return "Permanent embargo (intranet only)";
         }
-        if (bitstreamPermissions.size() > 0 && !"redeposit".equalsIgnoreCase(bitstreamPermissions.getLast())) {
+        if (bitstreamPermissions.size() > 0 && !"redeposit".equalsIgnoreCase(bitstreamPermissions.peek())) {
             bitstreamPermission = bitstreamPermissions.pop();
         }
         if (itemLicense == null || itemLicense.isBlank()) {
