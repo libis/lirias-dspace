@@ -41,7 +41,19 @@ public class KULConsumer implements Consumer {
     }
 
     @Override
-    public void consume(final Context ctx, final Event event) throws Exception {
+    public void consume(final Context ctx, final Event event) {
+        try {
+            doConsume(ctx, event);
+        } catch (Exception e) {
+            System.out.println("KULConsumer.consume threw an exception");
+            if (null != event) {
+                System.out.println("KULConsumer event: " + event.toString());
+            }
+            e.printStackTrace();
+        }
+    }
+
+    private void doConsume(final Context ctx, final Event event) throws Exception {
         try {
             if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
                 System.out.println("KUL Consumer/consume: Item install: " + event.getSubjectID());
@@ -90,7 +102,20 @@ public class KULConsumer implements Consumer {
     }
 
     @Override
-    public void end(final Context ctx) throws Exception {
+    public void end(final Context ctx) {
+        try {
+            doEnd(ctx);
+        } catch (Exception e) {
+            System.out.println("KULConsumer.end threw an exception");
+            System.out.println("Possibly lost some queued items:");
+            for (final QueuedItem qi : queue) {
+                System.out.println("event type: " + qi.getEventType() + ", item id: " + qi.getItemId() + ", bitstream id: " + qi.getBitstreamId());
+            }
+            e.printStackTrace();
+        }
+    }
+    
+    private void doEnd(final Context ctx) throws Exception {
         final Map<String, Group> groupsMap = new HashMap<>();
         for (final String groupName : ALL_GROUP_NAMES) {
             groupsMap.put(groupName, services.groupService.findByName(ctx, groupName));
