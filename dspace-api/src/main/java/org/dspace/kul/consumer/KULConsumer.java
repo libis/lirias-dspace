@@ -42,41 +42,50 @@ public class KULConsumer implements Consumer {
 
     @Override
     public void consume(final Context ctx, final Event event) throws Exception {
-        if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
-            System.out.println("KUL Consumer/consume: Item install: " + event.getSubjectID());
-            queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-        } else if (Event.ADD == event.getEventType()
-                && event.getSubjectType() == Constants.BUNDLE) {
-            final Bundle bundle = services.bundleService.find(ctx, event.getSubjectID());
-            System.out.println("Bundle: " + bundle);
-            for (final Item item : bundle.getItems()) {
-                // we listen to the ADD event only when the item is already installed
-                if (item.getMetadata().stream().anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance")
-                        && x.getValue().startsWith("Submitted by "))) {
-                    System.out.println("Item added: " + item);
-                    // event.getObjectID() is the bitstream ID
-                    if (bundle.getName().equals("ORIGINAL")) {
-                        queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+        try {
+            if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
+                System.out.println("KUL Consumer/consume: Item install: " + event.getSubjectID());
+                queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+            } else if (Event.ADD == event.getEventType()
+                    && event.getSubjectType() == Constants.BUNDLE) {
+                final Bundle bundle = services.bundleService.find(ctx, event.getSubjectID());
+                System.out.println("Bundle: " + bundle);
+                for (final Item item : bundle.getItems()) {
+                    // we listen to the ADD event only when the item is already installed
+                    if (item.getMetadata().stream()
+                            .anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance")
+                                    && x.getValue().startsWith("Submitted by "))) {
+                        System.out.println("Item added: " + item);
+                        // event.getObjectID() is the bitstream ID
+                        if (bundle.getName().equals("ORIGINAL")) {
+                            queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
+                        }
                     }
                 }
+            } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
+                final String bundleName = event.getDetail();
+                if (bundleName.equals("ORIGINAL")) {
+                    queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+                }
+            } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
+                System.out.println("KUL Consumer/consume: modify bitstream case");
+                ((Bitstream) event.getSubject(ctx)).getBundles().stream()
+                        .filter(bundle -> bundle.getName().toString().equals("ORIGINAL"))
+                        .forEach(bundle -> bundle.getItems()
+                                .forEach(item -> {
+                                    if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
+                                        queue.add(new QueuedItem(item.getID(), event.getSubjectID(),
+                                                event.getEventType()));
+                                    }
+                                }));
+            } else {
+                System.out.println("KUL Consumer/consume: Unprocessed event: " + event.toString());
             }
-        } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
-            final String bundleName = event.getDetail();
-            if (bundleName.equals("ORIGINAL")) {
-                queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+        } catch (Exception e) {
+            System.out.println("KUL Consumer/consume: " + e);
+            if (null != event) {
+                System.out.println(event.toString());
             }
-        } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
-            System.out.println("KUL Consumer/consume: modify bitstream case");
-            ((Bitstream) event.getSubject(ctx)).getBundles().stream()
-                    .filter(bundle -> bundle.getName().toString().equals("ORIGINAL"))
-                    .forEach(bundle -> bundle.getItems()
-                            .forEach(item -> {
-                                if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
-                                    queue.add(new QueuedItem(item.getID(), event.getSubjectID(), event.getEventType()));
-                                }
-                            }));
-        } else {
-            System.out.println("KUL Consumer/consume: Unprocessed event: " + event.toString());
         }
     }
 
@@ -88,55 +97,70 @@ public class KULConsumer implements Consumer {
         }
 
         for (final QueuedItem qi : queue) {
-            final Item item = services.itemService.find(ctx, qi.getItemId());
-            Bitstream bitstream = null;
-            if (qi.getBitstreamId() != null) {
-                bitstream = services.bitstreamService.find(ctx, qi.getBitstreamId());
-
-            }
-            final List<Bitstream> bitstreams = new ArrayList<>();
-            if (qi.getItemId() != null) {
-                for (final Bundle bundle : services.itemService.getBundles(item, "ORIGINAL")) {
-                    bitstreams.addAll(bundle.getBitstreams());
+            try {
+                final Item item = services.itemService.find(ctx, qi.getItemId());
+                Bitstream bitstream = null;
+                if (qi.getBitstreamId() != null) {
+                    bitstream = services.bitstreamService.find(ctx, qi.getBitstreamId());
 
                 }
-            }
+                final List<Bitstream> bitstreams = new ArrayList<>();
+                if (qi.getItemId() != null) {
+                    for (final Bundle bundle : services.itemService.getBundles(item, "ORIGINAL")) {
+                        bitstreams.addAll(bundle.getBitstreams());
 
-            ConsumeCaseEnum caseEnum = null;
-            switch (qi.getEventType()) {
-                case Event.ADD:
-                    System.out.println("KUL Consumer: Redeposit or add via DSpace UI case");
-                    if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
-                        caseEnum = ConsumeCaseEnum.REDEPOSIT;
-                    } else {
-                        caseEnum = ConsumeCaseEnum.ADD_VIA_UI;
                     }
-                    break;
-                case Event.INSTALL:
-                    System.out.println("KUL Consumer: Deposit case");
-                    caseEnum = ConsumeCaseEnum.DEPOSIT;
-                    break;
-                case Event.DELETE_BITSTREAM:
-                    System.out.println("KUL Consumer: Remove case");
-                    caseEnum = ConsumeCaseEnum.REMOVE;
-                    break;
-                case Event.MODIFY:
-                    System.out.println("KUL Consumer: Edit permission case");
-                    caseEnum = ConsumeCaseEnum.EDIT_PERMISSION;
-                    break;
-                default:
-                    log.error("KUL Consumer: event consume not implemented: " + qi.getEventType());
-                    break;
-            }
-            if (caseEnum != null) {
-                final boolean phd = isPhd(item);
-                final KULEvent e = new KULEvent(ctx, bitstream, item, bitstreams, groupsMap, caseEnum, phd, services);
-                Permissions.applyTo(e);
-                Provenance.applyTo(e);
-                Mailing.applyTo(e);
+                }
+
+                ConsumeCaseEnum caseEnum = null;
+                switch (qi.getEventType()) {
+                    case Event.ADD:
+                        System.out.println("KUL Consumer: Redeposit or add via DSpace UI case");
+                        if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
+                            caseEnum = ConsumeCaseEnum.REDEPOSIT;
+                        } else {
+                            caseEnum = ConsumeCaseEnum.ADD_VIA_UI;
+                        }
+                        break;
+                    case Event.INSTALL:
+                        System.out.println("KUL Consumer: Deposit case");
+                        caseEnum = ConsumeCaseEnum.DEPOSIT;
+                        break;
+                    case Event.DELETE_BITSTREAM:
+                        System.out.println("KUL Consumer: Remove case");
+                        caseEnum = ConsumeCaseEnum.REMOVE;
+                        break;
+                    case Event.MODIFY:
+                        System.out.println("KUL Consumer: Edit permission case");
+                        caseEnum = ConsumeCaseEnum.EDIT_PERMISSION;
+                        break;
+                    default:
+                        log.error("KUL Consumer: event consume not implemented: " + qi.getEventType());
+                        break;
+                }
+                if (caseEnum != null) {
+                    final boolean phd = isPhd(item);
+                    final KULEvent e = new KULEvent(ctx, bitstream, item, bitstreams, groupsMap, caseEnum, phd,
+                            services);
+                    Permissions.applyTo(e);
+                    Provenance.applyTo(e);
+                    Mailing.applyTo(e);
+                }
+            } catch (Exception e) {
+                System.out.println("KUL Consumer/end: " + e);
+                if (null != qi) {
+                    if (null != qi.getItemId()) {
+                        System.out.println("Item: " + qi.getItemId());
+                    }
+                    if (null != qi.getBitstreamId()) {
+
+                        System.out.println("Bitstream: " + qi.getBitstreamId());
+                    }
+                }
             }
         }
         queue.clear();
+
     }
 
     private boolean isPhd(Item item) {
