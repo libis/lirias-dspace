@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
@@ -19,7 +20,7 @@ import org.dspace.event.Consumer;
 import org.dspace.event.Event;
 
 public class KULConsumer implements Consumer {
-    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(KULConsumer.class);
+    private static final Logger LOGGER = LogManager.getLogger();
     public static final String ANONYMOUS_GROUP = "Anonymous";
     public static final String INTRANET_GROUP = "registered_users";
     public static final String ADMINS_LOCAL_GROUP = "Admins_local";
@@ -31,13 +32,13 @@ public class KULConsumer implements Consumer {
 
     @Override
     public void initialize() throws Exception {
-        System.out.println("KUL Consumer init. ");
+        LOGGER.info("KUL Consumer init. ");
 
     }
 
     @Override
     public void finish(final Context ctx) throws Exception {
-        System.out.println("KUL Consumer finished.");
+        LOGGER.info("KUL Consumer finished.");
     }
 
     @Override
@@ -45,59 +46,52 @@ public class KULConsumer implements Consumer {
         try {
             doConsume(ctx, event);
         } catch (Exception e) {
-            System.out.println("KULConsumer.consume threw an exception");
             if (null != event) {
-                System.out.println("KULConsumer event: " + event.toString());
+                LOGGER.error("KUL Consumer/consume for event " + event.toString(), e);
+            } else {
+                LOGGER.error("KUL Consumer/consume", e);
             }
-            e.printStackTrace();
         }
     }
 
     private void doConsume(final Context ctx, final Event event) throws Exception {
-        try {
-            if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
-                System.out.println("KUL Consumer/consume: Item install: " + event.getSubjectID());
-                queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-            } else if (Event.ADD == event.getEventType()
-                    && event.getSubjectType() == Constants.BUNDLE) {
-                final Bundle bundle = services.bundleService.find(ctx, event.getSubjectID());
-                System.out.println("Bundle: " + bundle);
-                for (final Item item : bundle.getItems()) {
-                    // we listen to the ADD event only when the item is already installed
-                    if (item.getMetadata().stream()
-                            .anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance")
-                                    && x.getValue().startsWith("Submitted by "))) {
-                        System.out.println("Item added: " + item);
-                        // event.getObjectID() is the bitstream ID
-                        if (bundle.getName().equals("ORIGINAL")) {
-                            queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
-                        }
+        if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
+            LOGGER.info("KUL Consumer/consume: Item install: " + event.getSubjectID());
+            queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
+        } else if (Event.ADD == event.getEventType()
+                && event.getSubjectType() == Constants.BUNDLE) {
+            final Bundle bundle = services.bundleService.find(ctx, event.getSubjectID());
+            LOGGER.info("Bundle: " + bundle);
+            for (final Item item : bundle.getItems()) {
+                // we listen to the ADD event only when the item is already installed
+                if (item.getMetadata().stream()
+                        .anyMatch(x -> x.getMetadataField().getQualifier().equals("provenance")
+                                && x.getValue().startsWith("Submitted by "))) {
+                    LOGGER.info("Item added: " + item);
+                    // event.getObjectID() is the bitstream ID
+                    if (bundle.getName().equals("ORIGINAL")) {
+                        queue.add(new QueuedItem(item.getID(), event.getObjectID(), event.getEventType()));
                     }
                 }
-            } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
-                final String bundleName = event.getDetail();
-                if (bundleName.equals("ORIGINAL")) {
-                    queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
-                }
-            } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
-                System.out.println("KUL Consumer/consume: modify bitstream case");
-                ((Bitstream) event.getSubject(ctx)).getBundles().stream()
-                        .filter(bundle -> bundle.getName().toString().equals("ORIGINAL"))
-                        .forEach(bundle -> bundle.getItems()
-                                .forEach(item -> {
-                                    if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
-                                        queue.add(new QueuedItem(item.getID(), event.getSubjectID(),
-                                                event.getEventType()));
-                                    }
-                                }));
-            } else {
-                System.out.println("KUL Consumer/consume: Unprocessed event: " + event.toString());
             }
-        } catch (Exception e) {
-            System.out.println("KUL Consumer/consume: " + e);
-            if (null != event) {
-                System.out.println(event.toString());
+        } else if (Event.DELETE_BITSTREAM == event.getEventType()) {
+            final String bundleName = event.getDetail();
+            if (bundleName.equals("ORIGINAL")) {
+                queue.add(new QueuedItem(event.getSubjectID(), event.getObjectID(), event.getEventType()));
             }
+        } else if (Event.MODIFY == event.getEventType() && event.getSubjectType() == Constants.BITSTREAM) {
+            LOGGER.info("KUL Consumer/consume: modify bitstream case");
+            ((Bitstream) event.getSubject(ctx)).getBundles().stream()
+                    .filter(bundle -> bundle.getName().toString().equals("ORIGINAL"))
+                    .forEach(bundle -> bundle.getItems()
+                            .forEach(item -> {
+                                if (queue.stream().noneMatch(q -> q.getItemId().equals(item.getID()))) {
+                                    queue.add(new QueuedItem(item.getID(), event.getSubjectID(),
+                                            event.getEventType()));
+                                }
+                            }));
+        } else {
+            LOGGER.info("KUL Consumer/consume: Unprocessed event: " + event.toString());
         }
     }
 
@@ -106,15 +100,15 @@ public class KULConsumer implements Consumer {
         try {
             doEnd(ctx);
         } catch (Exception e) {
-            System.out.println("KULConsumer.end threw an exception");
-            System.out.println("Possibly lost some queued items:");
+            LOGGER.error("KUL Consumer/end", e);
             for (final QueuedItem qi : queue) {
-                System.out.println("event type: " + qi.getEventType() + ", item id: " + qi.getItemId() + ", bitstream id: " + qi.getBitstreamId());
+                LOGGER.error("KUL Consumer/end: possibly unprocessed queued item -> event type: " + qi.getEventType()
+                        + ", item id: " + qi.getItemId() + ", bitstream id: "
+                        + qi.getBitstreamId());
             }
-            e.printStackTrace();
         }
     }
-    
+
     private void doEnd(final Context ctx) throws Exception {
         final Map<String, Group> groupsMap = new HashMap<>();
         for (final String groupName : ALL_GROUP_NAMES) {
@@ -140,7 +134,7 @@ public class KULConsumer implements Consumer {
                 ConsumeCaseEnum caseEnum = null;
                 switch (qi.getEventType()) {
                     case Event.ADD:
-                        System.out.println("KUL Consumer: Redeposit or add via DSpace UI case");
+                        LOGGER.info("KUL Consumer: Redeposit or add via DSpace UI case");
                         if (ctx.getCurrentUser().getEmail().equals("symplectic-elements@libis.be")) {
                             caseEnum = ConsumeCaseEnum.REDEPOSIT;
                         } else {
@@ -148,19 +142,19 @@ public class KULConsumer implements Consumer {
                         }
                         break;
                     case Event.INSTALL:
-                        System.out.println("KUL Consumer: Deposit case");
+                        LOGGER.info("KUL Consumer: Deposit case");
                         caseEnum = ConsumeCaseEnum.DEPOSIT;
                         break;
                     case Event.DELETE_BITSTREAM:
-                        System.out.println("KUL Consumer: Remove case");
+                        LOGGER.info("KUL Consumer: Remove case");
                         caseEnum = ConsumeCaseEnum.REMOVE;
                         break;
                     case Event.MODIFY:
-                        System.out.println("KUL Consumer: Edit permission case");
+                        LOGGER.info("KUL Consumer: Edit permission case");
                         caseEnum = ConsumeCaseEnum.EDIT_PERMISSION;
                         break;
                     default:
-                        log.error("KUL Consumer: event consume not implemented: " + qi.getEventType());
+                        LOGGER.error("KUL Consumer: event consume not implemented: " + qi.getEventType());
                         break;
                 }
                 if (caseEnum != null) {
@@ -172,16 +166,9 @@ public class KULConsumer implements Consumer {
                     Mailing.applyTo(e);
                 }
             } catch (Exception e) {
-                System.out.println("KUL Consumer/end: " + e);
-                if (null != qi) {
-                    if (null != qi.getItemId()) {
-                        System.out.println("Item: " + qi.getItemId());
-                    }
-                    if (null != qi.getBitstreamId()) {
-
-                        System.out.println("Bitstream: " + qi.getBitstreamId());
-                    }
-                }
+                LOGGER.error("KUL Consumer/end: failed processing queued item -> event type: " + qi.getEventType()
+                        + ", item id: " + qi.getItemId() + ", bitstream id: "
+                        + qi.getBitstreamId(), e);
             }
         }
         queue.clear();
