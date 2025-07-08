@@ -55,26 +55,6 @@ public class KULConsumer implements Consumer {
         }
     }
 
-    static private boolean hasSubmittedBy(MetadataValue m) {
-        if (m.getMetadataField() == null || m.getMetadataField().getQualifier() == null) {
-            LOGGER.error("KUL Consumer/doConsume: Item install null metadata or field. MetadataValue.getID():" + m.getID());
-
-            if (m.getMetadataField() != null) {
-                LOGGER.error("m.getMetadataField().toString(): " + m.getMetadataField().toString());
-                LOGGER.error("m.getMetadataField().getID():" + m.getMetadataField().getID());
-                LOGGER.error("m.getMetadataField().getMetadataSchema():" + m.getMetadataField().getMetadataSchema());
-                LOGGER.error("m.getMetadataField().getElement():" + m.getMetadataField().getElement());
-                LOGGER.error("m.getValue():" + m.getValue());
-            } else {
-                LOGGER.error("Metadata field is null.");
-            }
-            return false;
-        } else if (m.getMetadataField().getQualifier().equals("provenance")
-                && m.getValue().startsWith("Submitted by ")) {
-            return true;
-        }
-        return false;
-    }
 
     private void doConsume(final Context ctx, final Event event) throws Exception {
         if (event.getSubjectType() == Constants.ITEM && Event.INSTALL == event.getEventType()) {
@@ -86,8 +66,10 @@ public class KULConsumer implements Consumer {
             LOGGER.info("Bundle: " + bundle);
             for (final Item item : bundle.getItems()) {
                 // we listen to the ADD event only when the item is already installed
-                if (item.getMetadata().stream()
-                        .anyMatch(x -> hasSubmittedBy(x))) {
+                if (item.getMetadata().stream().anyMatch(
+                        x -> x.getMetadataField().getQualifier() != null && x.getValue() != null
+                                && x.getMetadataField().getQualifier().equals("provenance")
+                                && x.getValue().startsWith("Submitted by "))) {
                     LOGGER.info("Item added: " + item);
                     // event.getObjectID() is the bitstream ID
                     if (bundle.getName().equals("ORIGINAL")) {
