@@ -3,8 +3,6 @@ package org.dspace.kul.consumer;
 import java.util.ArrayList;
 import java.util.Date;
 
-import static org.dspace.core.Constants.READ;
-
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
@@ -78,11 +76,20 @@ public class Permissions {
                 }
 
             case ADD_VIA_UI: {
-                break;
+                try {
+                    System.out.println("Permission consumer/add_via_ui");
+                    setAddViaUIBitstreamPolicies(event);    
+                    break;
+                } catch (Exception e) {
+                    System.err.println("Permission consumer/add_via_ui: " + e);
+                    break;
+                }
             }
+            
             case REMOVE: {
                 break;
             }
+
             case EDIT_PERMISSION: {
                 try {
                     if (event.getBitstream() != null) {
@@ -109,16 +116,58 @@ public class Permissions {
 
     }
 
+    private static void setAddViaUIBitstreamPolicies(final KULEvent event) throws Exception {
+        String permission = "PUBLIC";
+        List<ResourcePolicy> policies = new ArrayList<>();
+        for (final String groupName : KULConsumer.ALL_GROUP_NAMES) {
+            policies.add(readForGroup(event, event.getGroupsMap().get(groupName)));
+        }
+        addPoliciesToBitstream(event, policies);
+        // write first permission after first three policies are added to avoid
+        // unnecessary emails on deposit
+        if (event.getBitstream() != null) {
+            System.out.println(
+                    "Permission consumer/add_via_ui: writing new permission to bitstream metadata for "
+                            + event.getBitstream().getName() + " : " + permission);
+
+            event.getServices().bitstreamService.addMetadata(event.getCtx(), event.getBitstream(), "dc",
+                    "bitstream",
+                    "permissions", "en",
+                    DCDate.getCurrent().toDate() + ";" + permission);
+
+            event.getServices().bitstreamService.update(event.getCtx(), event.getBitstream());
+        } else {
+            for (final Bitstream b : event.getBitstreams()) {
+                System.out.println(
+                        "Permission consumer/add_via_ui: writing new permission to bitstream metadata for :"
+                                + b.getName() + " : "
+                                + permission);
+                event.getServices().bitstreamService.addMetadata(event.getCtx(), b, "dc",
+                        "bitstream",
+                        "permissions", "en",
+                        DCDate.getCurrent().toDate() + ";" + permission);
+                event.getServices().bitstreamService.update(event.getCtx(), b);
+            }
+        }
+
+    
+    }
+
     private static void setDepositBitstreamPolicies(final KULEvent event) throws Exception {
+        // Default: No Access 
         String permission = "PRIVATE";
         List<ResourcePolicy> policies = new ArrayList<>();
         policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
-        if (!RIGHTS_NO_ACCESS_VALUE.equals(getRights(event))) {
+
+        // If not no access: Permanent embargo (Intranet)
+        if (RIGHTS_PERMANENT_EMBARGO_VALUE.equals(getRights(event))) {
             // else: add Intranet
             policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
             permission = "INTRANET";
-            // if PhD: add embargo for 1 year
-            if (event.isPhd()) {
+        }
+
+        // If PhD and public: 
+        if (event.isPhd() && RIGHTS_PUBLIC_ACCESS_VALUE.equals(getRights(event))) {
                 ResourcePolicy anonymousAccess = readForGroup(event,
                         event.getGroupsMap().get(KULConsumer.ANONYMOUS_GROUP));
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
@@ -131,7 +180,6 @@ public class Permissions {
                 anonymousAccess.setStartDate(dateEmbargoEnd);
                 policies.add(anonymousAccess);
                 permission = "EMBARGO";
-            }
         }
         addPoliciesToBitstream(event, policies);
 
