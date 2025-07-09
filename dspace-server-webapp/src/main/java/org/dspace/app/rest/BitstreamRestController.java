@@ -118,8 +118,14 @@ public class BitstreamRestController {
 
 
         Context context = ContextUtil.obtainContext(request);
-
-        Bitstream bit = bitstreamService.find(context, uuid);
+        Bitstream bit;
+        try {
+            bit = bitstreamService.find(context, uuid);
+        } catch (Exception e) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return null;
+        }
+        
         EPerson currentUser = context.getCurrentUser();
 
         if (bit == null) {
