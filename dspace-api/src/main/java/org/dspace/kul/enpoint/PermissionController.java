@@ -21,6 +21,7 @@ import org.dspace.content.service.BitstreamService;
 import org.dspace.core.Context;
 import org.dspace.eperson.service.GroupService;
 import org.dspace.kul.consumer.KULConsumer;
+import org.dspace.kul.consumer.Mailing;
 import org.dspace.web.ContextUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.dspace.content.Bitstream;
 import org.dspace.content.DCDate;
 import org.dspace.eperson.Group;
-
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -62,14 +63,12 @@ public class PermissionController {
     @Autowired
     GroupService groupService;
 
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(Mailing.class);
+
     @GetMapping("/{bitstreamID}")
     public ResponseEntity<BitstreamPermission> get(HttpServletRequest request, @PathVariable UUID bitstreamID)
             throws SQLException, AuthorizeException {
         Context context = ContextUtil.obtainContext(request);
-        System.out.println("Permission Controller GET bitstreamID: " + bitstreamID + " isAdmin: " + authorizeService.isAdmin(context));
-        if (!authorizeService.isAdmin(context)) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
-        }
         Bitstream bitstream = bitstreamService.find(context, bitstreamID);
         return new ResponseEntity<>(getBitstreamPermission(context, bitstream), HttpStatus.OK);
     }
@@ -79,8 +78,7 @@ public class PermissionController {
             @RequestBody BitstreamPermission permission)
             throws SQLException, AuthorizeException {
         Context context = ContextUtil.obtainContext(request);
-        System.out.println("Permission Controller POST bitstreamID: " + bitstreamID + " isAdmin: " + authorizeService.isAdmin(context));
-        if (!authorizeService.isAdmin(context)) {
+        if (!authorizeService.isAdmin(context) ) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
         Bitstream bitstream = bitstreamService.find(context, bitstreamID);
@@ -129,7 +127,7 @@ public class PermissionController {
         try {
             group = groupService.findByName(context, groupName);
         } catch (Exception e) {
-            System.err.println(e);
+            log.error(e);
         }
         if (null != group) {
             final ResourcePolicy rp = resourcePolicyService.create(context);
