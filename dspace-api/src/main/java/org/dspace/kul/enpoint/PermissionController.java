@@ -38,7 +38,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
+
 import org.dspace.core.Constants;
 
 /**
@@ -115,7 +118,9 @@ public class PermissionController {
         }
         result.setPermission(permission);
         if ("EMBARGO".equalsIgnoreCase(permission) && null != startDate) {
-            result.setEmbargoEndDate(startDate.getDate(), startDate.getMonth(), startDate.getYear() + 1900);
+            final GregorianCalendar calendar = new GregorianCalendar();
+            calendar.setTime(startDate);
+            result.setEmbargoEndDate(calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.MONTH), calendar.get(Calendar.YEAR));
         }
 
         return result;
@@ -140,7 +145,6 @@ public class PermissionController {
     }
 
     private void removePolicy(Context context, Bitstream bitstream, String groupName) {
-        System.out.println("Permission controller: Removing policies");
         Group group = null;
         try {
             group = groupService.findByName(context, groupName);
@@ -150,12 +154,9 @@ public class PermissionController {
         if (null != group) {
             try {
                 authorizeService.removeGroupPolicies(context, bitstream, group);
-                System.out.println("Permission controller: Removing policy " + group.getName());
             } catch (Exception e) {
                 System.err.println(e);
             }
-        } else {
-            System.err.println("Permission controller: Group " + groupName + " not found.");
         }
 
     }
@@ -166,7 +167,6 @@ public class PermissionController {
             removePolicy(context, bitstream, groupName);
         }
         if (!toAdd.isEmpty()) {
-            System.out.println("Permission controller: Adding policies: " + toAdd.toString());
             try {
                 authorizeService.addPolicies(context, toAdd, bitstream);
             } catch (Exception e) {
@@ -179,26 +179,20 @@ public class PermissionController {
 
     private void setBitstreamPermission(Context context, Bitstream bitstream, BitstreamPermission permission)
             throws SQLException, AuthorizeException {
-        System.out.println("Permission controller: Setting permission to " + permission.getPermission());
-        System.out.println("Permission controller: Embargo end date (if applicable) " + permission.getEmbargoEndDate());
-        List<ResourcePolicy> policiesToAdd;
-
         switch (permission.getPermission()) {
             case "PRIVATE": {
-                policiesToAdd = getPoliciesForGroups(context, bitstream, List.of(KULConsumer.ADMINS_LOCAL_GROUP));
+                final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream, List.of(KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             } // remove all, add ADMINS_LOCAL_GROUP
             case "INTRANET": {
-                System.out.println("Permission controller: case intranet");
-                policiesToAdd = getPoliciesForGroups(context, bitstream,
+                final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP
             case "PUBLIC": {
-                System.out.println("Permission controller: case public");
-                policiesToAdd = getPoliciesForGroups(context, bitstream,
+                final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
                 rp.setStartDate(DCDate.getCurrent().toDate());
@@ -208,30 +202,14 @@ public class PermissionController {
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP, ANONYMOUS_GROUP
               // (startDate: now)
             case "EMBARGO": {
-                System.out.println("Permission controller: case embargo");
-                policiesToAdd = getPoliciesForGroups(context, bitstream,
+                final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
-                System.out.println(permission);
-                System.out.println(permission.getEmbargoEndDate());
                 if (null == permission.getEmbargoEndDate()) {
-                    System.err.println("Permission controller: No end date entered for embargo.");
                     break; // no end date specified
                 }
-                Number endDateDay = 31; // default: last day of month
-                Number endDateMonth = 12; // default: December
-                if (null != permission.getEmbargoEndDate().day) {
-                    endDateDay = permission.getEmbargoEndDate().day;
-                } // set date if present
-                if (null != permission.getEmbargoEndDate().month) {
-                    endDateMonth = permission.getEmbargoEndDate().month;
-                } // set month if present
-                Number endDateYear = permission.getEmbargoEndDate().year;
-                if (null == endDateYear) {
-                    System.err.println("Permission controller: No end date year entered for embargo.");
-                    break;
-                } // no year: invalid
-                ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
-                rp.setStartDate(new Date((int) endDateYear - 1900, (int) endDateMonth, (int) endDateDay));
+                final ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
+                final Calendar calendar = new GregorianCalendar(permission.getEmbargoEndDate().year.intValue(), permission.getEmbargoEndDate().month.intValue(), permission.getEmbargoEndDate().day.intValue());
+                rp.setStartDate(Date.from(calendar.toInstant()));
                 policiesToAdd.add(rp);
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
                 break;
