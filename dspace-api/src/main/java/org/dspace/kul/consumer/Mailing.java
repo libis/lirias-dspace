@@ -288,20 +288,7 @@ public class Mailing {
             }
             case ADD_VIA_UI: {
                 System.out.println("OA emails: Add from UI case (no emails sent)");
-                // try {
-                //     if (event.getBitstream() != null) {
-                //         sendEmailAddViaUI(event, event.getBitstream());
-                //     } else {
-                //         for (Bitstream bitstream : event.getBitstreams()) {
-                //             sendEmailAddViaUI(event, bitstream);
-                //         }
-                //     }
-                //     break;
-                // } catch (Exception e) {
-                //     System.err.println("OA emails: " + e);
-                //     break;
-                // }
-
+                break;
             }
             case DEPOSIT: {
                 System.out.println("OA emails: Deposit case");
