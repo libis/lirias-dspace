@@ -183,13 +183,13 @@ public class PermissionController {
             case "PRIVATE": {
                 final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream, List.of(KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
-                break;
+                return;
             } // remove all, add ADMINS_LOCAL_GROUP
             case "INTRANET": {
                 final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
-                break;
+                return;
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP
             case "PUBLIC": {
                 final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream,
@@ -198,24 +198,23 @@ public class PermissionController {
                 rp.setStartDate(DCDate.getCurrent().toDate());
                 policiesToAdd.add(rp);
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
-                break;
+                return;
             } // remove all, add INTRANET_GROUP, ADMINS_LOCAL_GROUP, ANONYMOUS_GROUP
               // (startDate: now)
             case "EMBARGO": {
                 final List<ResourcePolicy> policiesToAdd = getPoliciesForGroups(context, bitstream,
                         List.of(KULConsumer.INTRANET_GROUP, KULConsumer.ADMINS_LOCAL_GROUP));
                 if (null == permission.getEmbargoEndDate()) {
-                    break; // no end date specified
+                    return; // no end date specified
                 }
                 final ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
                 final Calendar calendar = new GregorianCalendar(permission.getEmbargoEndDate().year.intValue(), permission.getEmbargoEndDate().month.intValue(), permission.getEmbargoEndDate().day.intValue());
                 rp.setStartDate(Date.from(calendar.toInstant()));
                 policiesToAdd.add(rp);
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
-                break;
+                return;
             }
         }
-
     }
 
     private List<ResourcePolicy> getPoliciesForGroups(Context context, Bitstream bitstream, List<String> groupNames)
