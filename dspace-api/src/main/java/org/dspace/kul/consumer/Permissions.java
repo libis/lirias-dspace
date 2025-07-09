@@ -76,14 +76,7 @@ public class Permissions {
                 }
 
             case ADD_VIA_UI: {
-                try {
-                    log.info("Permission consumer/add_via_ui");
-                    setAddViaUIBitstreamPolicies(event);
-                    break;
-                } catch (Exception e) {
-                    log.error("Permission consumer/add_via_ui: " + e);
-                    break;
-                }
+                break;
             }
 
             case REMOVE: {
