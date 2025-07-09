@@ -152,7 +152,7 @@ public class Permissions {
         policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
 
         // If not no access: Permanent embargo (Intranet)
-        if (RIGHTS_PERMANENT_EMBARGO_VALUE.equals(getRights(event))) {
+        if (RIGHTS_PERMANENT_EMBARGO_VALUE.equals(getRights(event)) || RIGHTS_PUBLIC_ACCESS_VALUE.equals(getRights(event))) {
             // else: add Intranet
             policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
             permission = "INTRANET";
