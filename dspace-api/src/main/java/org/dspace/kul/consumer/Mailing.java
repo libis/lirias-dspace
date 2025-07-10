@@ -121,11 +121,16 @@ public class Mailing {
                                 && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
                             String permission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(permission));
+                            if (permission.toLowerCase().contains("embargo")) {
+                                email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
+                            } else {
+                                email.addArgument(getGroupStartDate(event, event.getBitstream(), ""));
+                            }
 
                         } else {
                             email.addArgument(null);
+                            email.addArgument(getGroupStartDate(event, event.getBitstream(), ""));
                         }
-                        email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
                         email.sendHTML();
                         break;
                     } catch (Exception e) {
@@ -248,6 +253,12 @@ public class Mailing {
                                 && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
                             final String currentPermission = permissionHistory.pop();
                             email.addArgument(expandPermissionString(currentPermission));
+                            if (currentPermission.toLowerCase().contains("embargo")) {
+                                email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
+                            } else {
+                                email.addArgument(getGroupStartDate(event, event.getBitstream(), ""));
+                            }
+                            
                         } else {
                             System.out.println("No previous permission found for " + event.getBitstream().getName());
                             break;
@@ -764,7 +775,7 @@ public class Mailing {
                 }
 
             }
-        } 
+        }
 
         result.put("Item Description", getItemMetadataOrEmptyString(item, "dc", "description", null, Item.ANY));
         result.put("Date Issued", getItemMetadataOrEmptyString(item, "dc", "date", "issued", Item.ANY));
@@ -821,16 +832,19 @@ public class Mailing {
     }
 
     private static String expandPermissionString(String permission) {
-        switch (permission.toLowerCase()) {
-            case "embargo":
-                return "Public (after an embargo of 12 months)";
-            case "public":
-                return "Public";
-            case "intranet":
-                return "Permanent embargo (intranet only)";
-            default:
-                return "Private (repository admins only)";
+        if (permission.toLowerCase().contains("embargo")) {
+            return "Public (after an embargo of 12 months)";
         }
+        if (permission.toLowerCase().contains("public")) {
+            return "Public";
+        }
+        if (permission.toLowerCase().contains("intranet")) {
+            return "Permanent embargo (intranet only)";
+        }
+        if (permission.toLowerCase().contains("private")) {
+            return "Private (repository admins only)";
+        }
+        return "";
     }
 
     private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event, Bitstream bitstream)
