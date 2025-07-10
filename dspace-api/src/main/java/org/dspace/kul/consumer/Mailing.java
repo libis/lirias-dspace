@@ -212,7 +212,8 @@ public class Mailing {
                 }
                 case EDIT_PERMISSION: {
                     System.out.println("PhD emails: Edit permission case");
-                    if (services.authorizeService.isAdmin(event.getCtx())) {
+                    System.out.println(event.getCtx().getCurrentUser().getGroups().toString());
+                    if (!services.authorizeService.isAdmin(event.getCtx())) {
                         break;
                     }
                     try {
