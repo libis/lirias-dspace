@@ -2,16 +2,18 @@ package org.dspace.kul.consumer;
 
 import java.util.ArrayList;
 import java.util.Date;
-
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.ResourcePolicy;
 import org.dspace.content.Bitstream;
+import org.dspace.content.Bundle;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
 import org.dspace.content.MetadataValue;
@@ -76,7 +78,6 @@ public class Permissions {
                 }
 
             case ADD_VIA_UI: {
-                break;
             }
 
             case REMOVE: {
@@ -232,43 +233,66 @@ public class Permissions {
         return bitstreams;
     }
 
-    private static String getPreviousPermission(final KULEvent event) {
-        final ArrayList<String> newBitstreams = getBitstreamsArray(event);
-        final Item item = event.getItem();
-        final List<MetadataValue> metadataValues = item.getMetadata();
-        String result = null;
-        for (MetadataValue metadataValue : metadataValues) {
-            if ("provenance".equals(metadataValue.getMetadataField().getQualifier())) {
-                final String provenance = metadataValue.getValue();
-                if (provenance.contains("Bitstream added") || provenance.contains("Bitstream submitted")) {
-                    for (String filePermission : provenance.split(" - ")) {
-                        String[] splitPermission = filePermission.split("File permission: ");
-                        if (splitPermission.length == 2
-                                && newBitstreams.stream().noneMatch(x -> splitPermission[0].contains(x))) {
-                            result = splitPermission[1];
-                        }
-                    }
-                } else if (provenance.contains("The permissions of bitstream")
-                        && newBitstreams.stream().noneMatch(x -> provenance.contains(x))) {
-                    String[] splitPermission = provenance.split(" to ");
-                    result = splitPermission[1];
-                }
-
-            }
+    private static Bitstream getPreviousBitstream(final KULEvent event) {
+        final List<Bitstream> bitstreams = event.getBitstream() != null ? List.of(event.getBitstream()) : event.getBitstreams();
+        final List<Bundle> bundles = event.getItem().getBundles().stream().filter(x -> x.getName().toString().equals("ORIGINAL")).collect(Collectors.toList());
+        if (bundles.size() > 0) {
+            final List<Bitstream> originalBitstreams = bundles.get(0).getBitstreams().stream().
+                filter(x ->  bitstreams.stream().noneMatch(y -> x.getID().equals(y.getID()))).collect(Collectors.toList());
+             if (originalBitstreams.size() > 0) {
+                return originalBitstreams.get(originalBitstreams.size() - 1);
+             }
         }
-        return result;
+        return null;
+    }
+
+    private static String getBitstreamPermissionText(final KULEvent event, final Bitstream bs) {
+        try {
+            final List<ResourcePolicy> resourcePolicies = event.getServices().authorizeService.getPoliciesActionFilter(
+                    event.getCtx(), bs,
+                    Constants.READ);
+            String result = "PRIVATE";
+            for (final ResourcePolicy policy : resourcePolicies) {
+                final Group group = policy.getGroup();
+                final Date startDate = policy.getStartDate();
+                final Date now = DCDate.getCurrent().toDate();
+
+                if (group == event.getServices().groupService.findByName(event.getCtx(), KULConsumer.ANONYMOUS_GROUP)) {
+                    if (startDate == null || startDate.before(now)) {
+                        return "PUBLIC";
+                    } else if (startDate.after(now)) {
+                        result = "EMBARGO";
+                    }
+                } else if (group == event.getServices().groupService.findByName(event.getCtx(),
+                        KULConsumer.INTRANET_GROUP)) {
+                    result = "INTRANET";
+                }
+            }
+            return result;
+        } catch (final SQLException e) {
+            log.error(e);
+        }
+        return null;
     }
 
     private static void setRedepositBitstreamPolicies(final KULEvent event, Bitstream bitstream) throws Exception {
         if (!isRedeposit(bitstream)) {
             return;
         }
-        event.getServices().bitstreamService.clearMetadata(event.getCtx(), bitstream, "dc", "bitstream", "permissions",
-                Item.ANY);
-        String permission = "INTRANET";
         List<ResourcePolicy> policies = new ArrayList<>();
-        policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
-        policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+        String permission; 
+        if (!event.isPhd()) {
+            // if not PhD : only Intranet
+            event.getServices().bitstreamService.clearMetadata(event.getCtx(), bitstream, "dc", "bitstream", "permissions",
+                Item.ANY);
+            permission = "INTRANET";
+            policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
+            policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
+        } else {
+            Bitstream previousBitstream = getPreviousBitstream(event);
+            policies = previousBitstream.getResourcePolicies();
+            permission = getBitstreamPermissionText(event, previousBitstream);
+        }
 
         addPoliciesToBitstream(event, policies);
 
