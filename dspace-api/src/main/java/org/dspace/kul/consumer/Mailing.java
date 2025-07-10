@@ -213,11 +213,8 @@ public class Mailing {
                 }
                 case EDIT_PERMISSION: {
                     System.out.println("PhD emails: Edit permission case");
-                    for (Group group : event.getCtx().getCurrentUser().getGroups()) {
-                        System.out.println(group.toString());
-                    }
-                    System.out.println(event.getCtx().getCurrentUser().getEmail());
-                    if (!services.authorizeService.isAdmin(event.getCtx())) {
+                    if ("symplectic-elements@libis.be".equals(event.getCtx().getCurrentUser().getEmail())) {
+                        // Only send an email if the event originates from Elements
                         break;
                     }
                     try {
