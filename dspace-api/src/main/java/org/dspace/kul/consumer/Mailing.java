@@ -212,6 +212,9 @@ public class Mailing {
                 }
                 case EDIT_PERMISSION: {
                     System.out.println("PhD emails: Edit permission case");
+                    if (services.authorizeService.isAdmin(event.getCtx())) {
+                        break;
+                    }
                     try {
                         Set<String> emailRecipients = getContributorEmails(event.getItem(),
                                 List.of("author", "supervisor", "cosupervisor"));
