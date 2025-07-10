@@ -51,7 +51,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -128,7 +127,7 @@ public class BitstreamRestController {
         
         EPerson currentUser = context.getCurrentUser();
 
-        if (bit == null) {
+        if (bit == null || bit.isDeleted() || bit.getBundles().stream().anyMatch(bundle -> bundle.getItems().stream().anyMatch(item -> item.isWithdrawn()))) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return null;
         }
