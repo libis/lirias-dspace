@@ -118,10 +118,9 @@ public class PermissionController {
         }
         result.setPermission(permission);
         if ("EMBARGO".equalsIgnoreCase(permission) && startDate != null) {
-            System.out.println("returning start date: " + startDate);
             final GregorianCalendar calendar = new GregorianCalendar();
             calendar.setTime(startDate);
-            result.setEmbargoEndDate(calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.MONTH), calendar.get(Calendar.YEAR));
+            result.setEmbargoEndDate(calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.YEAR));
         }
 
         return result;
@@ -209,9 +208,8 @@ public class PermissionController {
                     return; // no end date specified
                 }
                 final ResourcePolicy rp = readForGroup(context, bitstream, KULConsumer.ANONYMOUS_GROUP);
-                final Calendar calendar = new GregorianCalendar(permission.getEmbargoEndDate().year.intValue(), permission.getEmbargoEndDate().month.intValue(), permission.getEmbargoEndDate().day.intValue());
+                final Calendar calendar = new GregorianCalendar(permission.getEmbargoEndDate().year.intValue(), permission.getEmbargoEndDate().month.intValue() - 1, permission.getEmbargoEndDate().day.intValue());
                 final Date startDate = Date.from(calendar.toInstant());
-                System.out.println("storing start date: " + startDate);
                 rp.setStartDate(startDate);
                 policiesToAdd.add(rp);
                 changeBitstreamPolicies(context, bitstream, policiesToAdd);
