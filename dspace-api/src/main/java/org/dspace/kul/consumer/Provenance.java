@@ -212,8 +212,15 @@ public class Provenance {
     }
 
     private static String editBitstreamPermissionCase(final KULEvent event) throws Exception {
+        String newPermission = getBitstreamPermissionText(event, event.getBitstream());
+        if (newPermission == "EMBARGO") {
+                for (final ResourcePolicy policy : event.getServices().authorizeService.getPoliciesActionFilter(
+                        event.getCtx(), event.getBitstream(),
+                        Constants.READ)) {
+                    newPermission += " " + getPolicyDates(policy);
+                }
+            }
 
-        final String newPermission = getBitstreamPermissionText(event, event.getBitstream());
         final String previousPermission = getPreviousBitstreamPermissionText(event.getCtx(), event.getBitstream());
 
         if (previousPermission != null && !newPermission.equals(previousPermission)) {
