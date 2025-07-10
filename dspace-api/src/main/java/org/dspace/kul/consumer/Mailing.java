@@ -7,6 +7,7 @@ import org.dspace.content.Item;
 import org.dspace.content.MetadataValue;
 import org.dspace.core.Email;
 import org.dspace.core.I18nUtil;
+import org.dspace.eperson.Group;
 import org.dspace.core.Constants;
 import java.util.Deque;
 import java.util.HashMap;
@@ -212,7 +213,10 @@ public class Mailing {
                 }
                 case EDIT_PERMISSION: {
                     System.out.println("PhD emails: Edit permission case");
-                    System.out.println(event.getCtx().getCurrentUser().getGroups().toString());
+                    for (Group group : event.getCtx().getCurrentUser().getGroups()) {
+                        System.out.println(group.toString());
+                    }
+                    System.out.println(event.getCtx().getCurrentUser().getEmail());
                     if (!services.authorizeService.isAdmin(event.getCtx())) {
                         break;
                     }
