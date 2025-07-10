@@ -217,7 +217,7 @@ public class Provenance {
                 for (final ResourcePolicy policy : event.getServices().authorizeService.getPoliciesActionFilter(
                         event.getCtx(), event.getBitstream(),
                         Constants.READ)) {
-                    newPermission += " " + getPolicyDates(policy);
+                    newPermission += getPolicyDates(policy);
                 }
             }
 
