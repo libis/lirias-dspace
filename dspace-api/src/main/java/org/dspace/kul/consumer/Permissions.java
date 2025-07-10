@@ -31,11 +31,6 @@ public class Permissions {
             case REDEPOSIT:
                 try {
                     log.info("Permissions consumer: Redeposit case");
-                    List<ResourcePolicy> policies = new ArrayList<>();
-                    policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
-                    policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
-
-                    addPoliciesToBitstream(event, policies);
 
                     if (event.getBitstream() != null) {
                         log.info(
@@ -281,10 +276,11 @@ public class Permissions {
         }
         List<ResourcePolicy> policies = new ArrayList<>();
         String permission; 
+        event.getServices().bitstreamService.clearMetadata(event.getCtx(), bitstream, "dc", "bitstream", "permissions",
+                Item.ANY);
+
         if (!event.isPhd()) {
             // if not PhD : only Intranet
-            event.getServices().bitstreamService.clearMetadata(event.getCtx(), bitstream, "dc", "bitstream", "permissions",
-                Item.ANY);
             permission = "INTRANET";
             policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.ADMINS_LOCAL_GROUP)));
             policies.add(readForGroup(event, event.getGroupsMap().get(KULConsumer.INTRANET_GROUP)));
