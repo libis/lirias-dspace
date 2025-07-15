@@ -107,10 +107,11 @@ public class PermissionController {
             if (group == groupService.findByName(context, KULConsumer.ANONYMOUS_GROUP)) {
                 if (startDate == null || startDate.before(now)) {
                     permission = "PUBLIC";
-                } else if (startDate.after(now)) {
+                    break;
+                } else  {
                     permission = "EMBARGO";
+                    break;
                 }
-
             } else if (group == groupService.findByName(context,
                     KULConsumer.INTRANET_GROUP)) {
                 permission = "INTRANET";

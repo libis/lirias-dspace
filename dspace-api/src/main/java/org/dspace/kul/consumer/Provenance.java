@@ -285,8 +285,8 @@ public class Provenance {
                 if (group == event.getServices().groupService.findByName(event.getCtx(), KULConsumer.ANONYMOUS_GROUP)) {
                     if (startDate == null || startDate.before(now)) {
                         return "PUBLIC";
-                    } else if (startDate.after(now)) {
-                        result = "EMBARGO";
+                    } else {
+                        return "EMBARGO";
                     }
                 } else if (group == event.getServices().groupService.findByName(event.getCtx(),
                         KULConsumer.INTRANET_GROUP)) {
