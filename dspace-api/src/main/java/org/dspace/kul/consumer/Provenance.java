@@ -221,9 +221,11 @@ public class Provenance {
                 }
             }
 
-        final String previousPermission = getPreviousBitstreamPermissionText(event.getCtx(), event.getBitstream());
-
-        if (previousPermission == null && !newPermission.equals(previousPermission)) {
+        String previousPermission = getPreviousBitstreamPermissionText(event.getCtx(), event.getBitstream());
+        if (previousPermission==null) {
+            previousPermission = event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "deposit", "previousavailability", Item.ANY);
+        }
+        if (!newPermission.equals(previousPermission)) {
             // If permission is first or has changed: write to bitstream metadata
             // (dc.bitstream.permissions)
             updateBitstreamPermissionMetadata(event, event.getBitstream(), previousPermission, newPermission);
