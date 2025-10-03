@@ -116,7 +116,7 @@ public class Mailing {
                                 event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
                                         null, Item.ANY));
 
-                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
+                        Deque<String> permissionHistory = getBitstreamPermissionHistory(event,
                                 event.getBitstream());
                         if (permissionHistory.size() > 0
                                 && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
@@ -243,7 +243,7 @@ public class Mailing {
                         email.addArgument(
                                 event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "title",
                                         null, Item.ANY));
-                        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event,
+                        Deque<String> permissionHistory = getBitstreamPermissionHistory(event,
                                 event.getBitstream());
                         if (permissionHistory.size() > 0
                                 && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
@@ -265,9 +265,9 @@ public class Mailing {
                             }
                             
                         } else {
-                            System.out.println("No previous permission found for " + event.getBitstream().getName());
+                            System.out.println("No current permission found for " + event.getBitstream().getName());
                             break;
-                            // do not send email when there is no previous permission
+                            // do not send email when there is no current permission
                             // because it means permissions are being set for the first time
                         }
                         email.addArgument(getGroupStartDate(event, event.getBitstream(), "anonymous"));
@@ -758,7 +758,7 @@ public class Mailing {
         result.put("Bitstream Version",
                 getBitstreamMetadataOrEmptyString(bitstream, "dc", "description", null, Item.ANY));
         result.put("Accessibility", "");
-        Deque<String> permissionHistory = getPreviousBitstreamPermissionText(event, bitstream);
+        Deque<String> permissionHistory = getBitstreamPermissionHistory(event, bitstream);
         if (null != permissionHistory && permissionHistory.size() > 0) {
             if (!"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
                 result.put("Accessibility", permissionHistory.pop());
@@ -769,7 +769,7 @@ public class Mailing {
                 } else {
                     Bitstream previousBitstream = getPreviousBitstream(event);
                     if (previousBitstream != null) {
-                        Deque<String> previousBitstreamPermission = getPreviousBitstreamPermissionText(event,
+                        Deque<String> previousBitstreamPermission = getBitstreamPermissionHistory(event,
                                 previousBitstream);
                         if (null != previousBitstreamPermission && previousBitstreamPermission.size() > 0) {
                             if (!"redeposit".equalsIgnoreCase(previousBitstreamPermission.peek())) {
@@ -852,7 +852,7 @@ public class Mailing {
         return "";
     }
 
-    private static Deque<String> getPreviousBitstreamPermissionText(KULEvent event, Bitstream bitstream)
+    private static Deque<String> getBitstreamPermissionHistory(KULEvent event, Bitstream bitstream)
             throws ParseException {
         Deque<String> permissions = new ArrayDeque<String>();
         for (final MetadataValue bitstreamMetadata : bitstream.getMetadata()) {
@@ -880,9 +880,9 @@ public class Mailing {
         String bitstreamPermission = null;
         Deque<String> bitstreamPermissions = null;
         if (event.getBitstream() != null) {
-            bitstreamPermissions = getPreviousBitstreamPermissionText(event, event.getBitstream());
+            bitstreamPermissions = getBitstreamPermissionHistory(event, event.getBitstream());
         } else {
-            bitstreamPermissions = getPreviousBitstreamPermissionText(event, event.getBitstreams().get(0));
+            bitstreamPermissions = getBitstreamPermissionHistory(event, event.getBitstreams().get(0));
         }
         if (bitstreamPermissions.size() > 0 && "redeposit".equalsIgnoreCase(bitstreamPermissions.peek())) {
             return "Permanent embargo (intranet only)";

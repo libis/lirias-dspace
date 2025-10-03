@@ -8,6 +8,7 @@
 package org.dspace.kul.enpoint;
 
 import java.sql.SQLException;
+import java.text.MessageFormat;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
@@ -32,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.dspace.content.Bitstream;
 import org.dspace.content.DCDate;
+import org.dspace.content.Item;
+import org.dspace.content.MetadataValue;
 import org.dspace.eperson.Group;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +88,21 @@ public class PermissionController {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
         Bitstream bitstream = bitstreamService.find(context, bitstreamID);
+        BitstreamPermission previousPermission = getBitstreamPermission(context, bitstream);
+        String newPermissionMessage = permission.getPermission();
+
+        if ("EMBARGO".equalsIgnoreCase(permission.getPermission()) && permission.getEmbargoEndDate() != null) {
+            final Calendar cal = new GregorianCalendar(permission.getEmbargoEndDate().year.intValue(),
+                    permission.getEmbargoEndDate().month.intValue() - 1,
+                    permission.getEmbargoEndDate().day.intValue());
+            final Date embargoDate = Date.from(cal.toInstant());
+            newPermissionMessage += MessageFormat.format(", {0}", embargoDate.toString());
+        }
+
+        System.out.println(
+                "Permission controller is updating permission metadata for " + bitstream.getName() + " from  "
+                        + previousPermission.getPermission() + " to " + newPermissionMessage);
+        updateBitstreamPermissionMetadata(context, bitstream, permission);
         try {
             setBitstreamPermission(context, bitstream, permission);
         } catch (Exception e) {
@@ -92,6 +110,19 @@ public class PermissionController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    private static String getPolicyDates(final ResourcePolicy policy) {
+        final Date startDate = policy.getStartDate();
+        final Date endDate = policy.getEndDate();
+        String result = "";
+        if (startDate != null) {
+            result += MessageFormat.format(", {0}", startDate.toString());
+        }
+        if (endDate != null) {
+            result += MessageFormat.format(" to {0}", endDate.toString());
+        }
+        return result;
     }
 
     private BitstreamPermission getBitstreamPermission(Context context, Bitstream bitstream) throws SQLException {
@@ -104,16 +135,15 @@ public class PermissionController {
         for (ResourcePolicy policy : resourcePolicies) {
             startDate = policy.getStartDate();
             final Group group = policy.getGroup();
-            if (group == groupService.findByName(context, KULConsumer.ANONYMOUS_GROUP)) {
+            if (group != null && KULConsumer.ANONYMOUS_GROUP.equals(group.getName())) {
                 if (startDate == null || startDate.before(now)) {
                     permission = "PUBLIC";
                     break;
-                } else  {
+                } else {
                     permission = "EMBARGO";
                     break;
                 }
-            } else if (group == groupService.findByName(context,
-                    KULConsumer.INTRANET_GROUP)) {
+            } else if (group != null && KULConsumer.INTRANET_GROUP.equals(group.getName())) {
                 permission = "INTRANET";
             }
         }
@@ -125,6 +155,27 @@ public class PermissionController {
         }
 
         return result;
+    }
+
+    
+    private void updateBitstreamPermissionMetadata(Context ctx, Bitstream bitstream, BitstreamPermission permission)
+            throws SQLException, AuthorizeException {
+        String newPermission = permission.getPermission();
+        if ("EMBARGO".equalsIgnoreCase(permission.getPermission())) {
+            for (final ResourcePolicy policy : authorizeService
+                    .getPoliciesActionFilter(ctx, bitstream, Constants.READ)) {
+                newPermission += getPolicyDates(policy);
+            }
+        }
+        System.out.println(
+                "Permission controller - writing new permission to bitstream metadata for " + bitstream.getName() + " : "
+                        + newPermission);
+
+        bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream",
+                "permissions", "en",
+                DCDate.getCurrent().toDate() + ";" + newPermission);
+        bitstreamService.update(ctx, bitstream);
+        ctx.commit();
     }
 
     private ResourcePolicy readForGroup(Context context, Bitstream bitstream, String groupName)

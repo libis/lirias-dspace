@@ -4,7 +4,9 @@ import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.Date;
+import java.util.Deque;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
@@ -14,7 +16,6 @@ import org.dspace.content.DCDate;
 import org.dspace.content.Item;
 import org.dspace.content.MetadataValue;
 import org.dspace.core.Constants;
-import org.dspace.core.Context;
 import org.dspace.eperson.Group;
 
 public class Provenance {
@@ -87,7 +88,7 @@ public class Provenance {
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
-            if (permissionMessage == "EMBARGO") {
+            if ("EMBARGO".equalsIgnoreCase(permissionMessage)) {
                 for (final ResourcePolicy policy : event.getServices().authorizeService.getPoliciesActionFilter(
                         event.getCtx(), b,
                         Constants.READ)) {
@@ -140,7 +141,7 @@ public class Provenance {
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
-            if (permissionMessage == "EMBARGO") {
+            if ("EMBARGO".equalsIgnoreCase(permissionMessage)) {
                 for (final ResourcePolicy policy : event.getServices().authorizeService
                         .getPoliciesActionFilter(event.getCtx(), b, Constants.READ)) {
                     message += getPolicyDates(policy);
@@ -179,7 +180,7 @@ public class Provenance {
             if (!permissionMessage.isBlank()) {
                 message += MessageFormat.format(", File permission: {0}", permissionMessage);
             }
-            if (permissionMessage == "EMBARGO") {
+            if ("EMBARGO".equalsIgnoreCase(permissionMessage)) {
                 for (final ResourcePolicy policy : event.getServices().authorizeService.getPoliciesActionFilter(
                         event.getCtx(), b,
                         Constants.READ)) {
@@ -212,34 +213,41 @@ public class Provenance {
     }
 
     private static String editBitstreamPermissionCase(final KULEvent event) throws Exception {
-        String newPermission = getBitstreamPermissionText(event, event.getBitstream());
-        if (newPermission == "EMBARGO") {
-                for (final ResourcePolicy policy : event.getServices().authorizeService.getPoliciesActionFilter(
-                        event.getCtx(), event.getBitstream(),
-                        Constants.READ)) {
-                    newPermission += getPolicyDates(policy);
-                }
-            }
+            String currentPermission = null;
+            String previousPermission = null;
 
-        String previousPermission = getPreviousBitstreamPermissionText(event.getCtx(), event.getBitstream());
-        if (previousPermission==null) {
-            previousPermission = event.getServices().itemService.getMetadataFirstValue(event.getItem(), "dc", "deposit", "previousavailability", Item.ANY);
-        }
-        if (!newPermission.equals(previousPermission)) {
-            // If permission is first or has changed: write to bitstream metadata
-            // (dc.bitstream.permissions)
-            updateBitstreamPermissionMetadata(event, event.getBitstream(), previousPermission, newPermission);
-                // If permission is changing and not first: add message to item provenance
-                // metadata
-                final String message = MessageFormat.format(
-                        "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to {6}",
-                        event.getBitstream().getName(),
-                        event.getBitstream().getID(),
-                        DCDate.getCurrent().toString(),
-                        event.getCtx().getCurrentUser().getFullName(),
-                        event.getCtx().getCurrentUser().getEmail(),
-                        previousPermission,
-                        newPermission);
+            Deque<String> permissionHistory = getBitstreamPermissionHistory(event,
+                                event.getBitstream());
+            System.out.println("Provenance consumer - permission history: " + permissionHistory.toString());
+
+            if (permissionHistory.size() > 0
+                    && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
+                currentPermission = permissionHistory.pop();
+            } else {
+                System.out.println("Provenance consumer - permission change - No current permission found for " + event.getBitstream().getName());
+            }
+            if (currentPermission != null && permissionHistory.size() > 0
+                    && !"redeposit".equalsIgnoreCase(permissionHistory.peek())) {
+                previousPermission = permissionHistory.pop();
+            } else {
+                System.out.println("Provenance consumer - permission change - No previous permission found for " + event.getBitstream().getName());
+            }
+            System.out.println("Provenance consumer - permission change - current permission: " + currentPermission);
+            System.out.println("Provenance consumer - permission change - previous permission: " + previousPermission);
+
+            if (previousPermission != null && !currentPermission.equals(previousPermission)) {
+                // If permission is first or has changed: write to bitstream metadata
+                // (dc.bitstream.permissions)
+                    // If permission is changing and not first: add message to item provenance metadata
+                    final String message = MessageFormat.format(
+                            "The permissions of bitstream \"{0}\" (ID: {1}) were updated on {2} by {3} ({4}) from {5} to {6}",
+                            event.getBitstream().getName(),
+                            event.getBitstream().getID(),
+                            DCDate.getCurrent().toString(),
+                            event.getCtx().getCurrentUser().getFullName(),
+                            event.getCtx().getCurrentUser().getEmail(),
+                            previousPermission,
+                            currentPermission);
                 return message;
         }
         return null;
@@ -302,26 +310,24 @@ public class Provenance {
         return null;
     }
 
-    private static String getPreviousBitstreamPermissionText(final Context ctx, final Bitstream bitstream)
+    private static Deque<String> getBitstreamPermissionHistory(KULEvent event, Bitstream bitstream)
             throws ParseException {
-        String currentPermission = null;
-        Date currentPermissionDate = null;
-        System.out.println("Parsing permissions in bitstream metadata");
+        Deque<String> permissions = new ArrayDeque<String>();
         for (final MetadataValue bitstreamMetadata : bitstream.getMetadata()) {
             if (bitstreamMetadata.getMetadataField().getElement().equals("bitstream")
                     && bitstreamMetadata.getMetadataField().getQualifier().equals("permissions")) {
                 final String[] temp = bitstreamMetadata.getValue().toString().split("\\;");
                 if (temp.length == 2) {
-                    final Date previousPermissionDate = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy")
-                            .parse(temp[0]);
-                    final String previousPermission = temp[1];
-                    if (currentPermissionDate == null || previousPermissionDate.after(currentPermissionDate)) {
-                        currentPermissionDate = previousPermissionDate;
-                        currentPermission = previousPermission;
+                    final Date permissionDate = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy").parse(temp[0]);
+                    final String permission = temp[1];
+                    if (permissionDate != null) {
+                        permissions.push(permission);
                     }
+                    // TODO: order by date
+                    // TODO: refactor (similar function in Provenance.java)
                 }
             }
         }
-        return currentPermission;
+        return permissions;
     }
 }
