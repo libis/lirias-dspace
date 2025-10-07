@@ -34,7 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.dspace.content.Bitstream;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
-import org.dspace.content.MetadataValue;
 import org.dspace.eperson.Group;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,18 +97,27 @@ public class PermissionController {
             final Date embargoDate = Date.from(cal.toInstant());
             newPermissionMessage += MessageFormat.format(", {0}", embargoDate.toString());
         }
+        System.out.println("Permission controller is removing previous permissions for " + bitstream.getName());
+        clearAllBitstreamPermissionMetadata(context, bitstream);
 
-        System.out.println(
-                "Permission controller is updating permission metadata for " + bitstream.getName() + " from  "
-                        + previousPermission.getPermission() + " to " + newPermissionMessage);
-        updateBitstreamPermissionMetadata(context, bitstream, permission);
-        try {
+        System.out.println("Permission controller is updating permission metadata for " + bitstream.getName() + " from  " + previousPermission.getPermission() + " to " + newPermissionMessage);
+        addBitstreamPermissionMetadata(context, bitstream, previousPermission);
+        addBitstreamPermissionMetadata(context, bitstream, permission);
+        context.commit();
+        try { 
             setBitstreamPermission(context, bitstream, permission);
         } catch (Exception e) {
             System.err.println(e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    private void clearAllBitstreamPermissionMetadata(Context context, Bitstream bitstream) throws SQLException, AuthorizeException {
+
+        bitstreamService.clearMetadata(context, bitstream, "dc", "bitstream", "permissions", Item.ANY);
+        bitstreamService.update(context, bitstream);
+        
     }
 
     private static String getPolicyDates(final ResourcePolicy policy) {
@@ -157,9 +165,7 @@ public class PermissionController {
         return result;
     }
 
-    
-    private void updateBitstreamPermissionMetadata(Context ctx, Bitstream bitstream, BitstreamPermission permission)
-            throws SQLException, AuthorizeException {
+    private void addBitstreamPermissionMetadata(Context ctx, Bitstream bitstream, BitstreamPermission permission) throws SQLException, AuthorizeException {
         String newPermission = permission.getPermission();
         if ("EMBARGO".equalsIgnoreCase(permission.getPermission())) {
             for (final ResourcePolicy policy : authorizeService
@@ -167,15 +173,11 @@ public class PermissionController {
                 newPermission += getPolicyDates(policy);
             }
         }
-        System.out.println(
-                "Permission controller - writing new permission to bitstream metadata for " + bitstream.getName() + " : "
-                        + newPermission);
-
+        System.out.println("Permission controller - writing new permission to bitstream metadata for " + bitstream.getName() + " : " + newPermission);
         bitstreamService.addMetadata(ctx, bitstream, "dc", "bitstream",
                 "permissions", "en",
                 DCDate.getCurrent().toDate() + ";" + newPermission);
         bitstreamService.update(ctx, bitstream);
-        ctx.commit();
     }
 
     private ResourcePolicy readForGroup(Context context, Bitstream bitstream, String groupName)
@@ -210,11 +212,9 @@ public class PermissionController {
                 System.err.println(e);
             }
         }
-
     }
 
-    private void changeBitstreamPolicies(Context context, Bitstream bitstream,
-            final List<ResourcePolicy> toAdd) throws SQLException, AuthorizeException {
+    private void changeBitstreamPolicies(Context context, Bitstream bitstream, final List<ResourcePolicy> toAdd) throws SQLException, AuthorizeException {
         for (String groupName : KULConsumer.ALL_GROUP_NAMES) {
             removePolicy(context, bitstream, groupName);
         }
