@@ -37,6 +37,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.csrf.InvalidCsrfTokenException;
 import org.springframework.security.web.csrf.MissingCsrfTokenException;
+import org.springframework.security.web.firewall.RequestRejectedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -212,6 +213,12 @@ public class DSpaceApiExceptionControllerAdvice extends ResponseEntityExceptionH
     protected void handleInvalidCaptchaTokenRequestException(HttpServletRequest request, HttpServletResponse response,
                                                                                       Exception ex) throws IOException {
         sendErrorResponse(request, response, ex, "Invalid captcha token", SC_FORBIDDEN);
+    }
+
+    @ExceptionHandler(RequestRejectedException.class)
+    protected void handleRejectedRequestException(HttpServletRequest request, HttpServletResponse response,
+                                                  Exception ex) throws IOException {
+        sendErrorResponse(request, response, ex, "Request is invalid or incorrect", HttpServletResponse.SC_BAD_REQUEST);
     }
 
     @Override

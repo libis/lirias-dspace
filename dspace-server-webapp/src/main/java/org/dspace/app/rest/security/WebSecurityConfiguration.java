@@ -30,6 +30,8 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.firewall.HttpFirewall;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
@@ -73,6 +75,7 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
     public void configure(WebSecurity webSecurity) throws Exception {
         // Define URL patterns which Spring Security will ignore entirely.
         webSecurity
+            .httpFirewall(httpFirewall())
             .ignoring()
                 // These /login request types are purposefully unsecured, as they all throw errors.
                 .antMatchers(HttpMethod.GET, "/api/authn/login")
@@ -184,6 +187,42 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Bean
     public CsrfTokenRepository csrfTokenRepository() {
         return new DSpaceCsrfTokenRepository();
+    }
+
+    /**
+     * Configure Spring's StrictHttpFirewall to accept RFC-compliant header values containing obs-text (0x80-0xFF).
+     * This is necessary for certain Shibboleth attributes with non-ASCII characters while still rejecting
+     * potentially dangerous control characters.
+     */
+    @Bean
+    public HttpFirewall httpFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowedHeaderValues(WebSecurityConfiguration::isAllowedHeaderValue);
+        return firewall;
+    }
+
+    /**
+     * Allow HTAB, visible ASCII and obs-text bytes (0x80-0xFF), as per HTTP header field-value grammar.
+     * Reject all other control characters, including CR, LF and NUL.
+     */
+    private static boolean isAllowedHeaderValue(String value) {
+        if (value == null) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == '\t') {
+                continue;
+            }
+            if (ch >= 0x20 && ch <= 0x7E) {
+                continue;
+            }
+            if (ch >= 0x80 && ch <= 0xFF) {
+                continue;
+            }
+            return false;
+        }
+        return true;
     }
 
     /**
